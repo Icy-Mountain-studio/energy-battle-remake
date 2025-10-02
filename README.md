@@ -1,8 +1,8 @@
 # Project Ark & The Noah Kernel
 
-Welcome to **Energy War - Remake**, a classic turn-based strategy game brought to life in your terminal! At its heart, this project is a tale of two key components:
+Welcome to **Energy Battle - Remake**, a classic turn-based strategy game brought to life in your terminal! At its heart, this project is a tale of two key components:
 
-*   **Ark (`ark.py`)**: The frontend and game-specific logic for "Energy War". It defines the rules, the actions, and the player experience.
+*   **Ark (`ark.py`)**: The frontend and game-specific logic for "Energy Battle". It defines the rules, the actions, and the player experience.
 *   **Noah (`noah.py`)**: The powerful, decoupled, turn-based game kernel that drives the action. It's the engine under the hood.
 
 This document focuses primarily on the **Noah Kernel**, the architectural centerpiece of this project.
