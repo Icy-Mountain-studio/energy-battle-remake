@@ -405,12 +405,12 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
         # Create a user-friendly display name for the prompt.
         # Here we make a simple assumption for the display name.
         # You could add a 'display_name' field to your Expression dict for a fancier version.
-        display_name = lang_code.replace('_', '-').upper()
+        display_name = lang_code.replace('_', '-')
         prompt_lines.append(f"  {option_num}. {display_name}")
 
     # 3. Construct the final prompt string.
     #    The default language is explicitly mentioned to guide the user.
-    prompt_lines.append(f"\n[Press Enter for {default_lang.upper()}] > ")
+    prompt_lines.append(f"\n[Press Enter for {default_lang}] > ")
     prompt = "\n".join(prompt_lines)
 
     # 4. Loop until a valid choice is made.
@@ -419,13 +419,13 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 
         # Handle the default case: user presses Enter.
         if not choice:
-            print(f"Defaulting to {default_lang.upper()}.")
+            print(f"Defaulting to {default_lang}.")
             return default_lang
 
         # Check if the input (e.g., '1' or 'zh_cn') is a valid option.
         if choice in options_map:
             selected_lang = options_map[choice]
-            print(f"Language set to: {selected_lang.upper()}\n")
+            print(f"Language set to: {selected_lang}\n")
             return selected_lang
 
         # Handle invalid input and re-prompt.
