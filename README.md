@@ -68,6 +68,7 @@ Here's a simplified look at the structure for a single action:
     "s_exec": charge_s,         // The function to run during the Selection phase
     "d_exec": [charge_d],       // A list of functions to run during the Resolution phase
 },
+```
 
 By changing this dictionary, you can fundamentally change the game without ever touching the noah.py kernel file.
 ⛓️ The Resolution Pipeline: d_exec & StreamProcessor
@@ -79,9 +80,8 @@ Notice that d_exec is a list of functions. When an action is resolved, the kerne
 The StreamProcessor takes an initial data stream (e.g., information about an attack) and passes it to the first function in the list. The output of that function becomes the input for the second function, and so on.
 
 Let's take ark.py's Shoot action as a perfect example. Its d_exec list is:
-*.py
-Python
 
+```Python
 "d_exec": [
     crossfire_evaluate,  // 1. Calculate initial damage and who gets hit.
     crossfire_crash,     // 2. Check if a target is also shooting back, and annihilate projectiles.
@@ -89,6 +89,7 @@ Python
     crossfire_defend,    // 4. Check if the target defended, reducing damage.
     crossfire_final      // 5. Apply the final, calculated damage and print results.
 ]
+```
 
 This pipeline approach makes complex interactions clean, readable, and easy to modify. Want to add a new "Dodge" mechanic? Just insert a crossfire_dodge function into the pipeline!
 🎮 How Ark Uses Noah
@@ -105,31 +106,20 @@ ark.py serves as the perfect example of a "client" for the Noah Kernel. Its main
 
 You don't need any special libraries, just Python!
 
-    Clone the repository:
+Clone the repository:
 
-*.bash
-Shell
-
+```bash
 git clone <your-repo-url>
 cd <your-repo-folder>
+```
 
 Run the game:
-*.bash
-Shell
 
-    python ark.py
+```bash
+python ark.py
+```
+That's it! Follow the on-screen instructions and start your battle.
 
-    That's it! Follow the on-screen instructions and start your battle.
-
-🤝 How to Contribute
-
-This project is a work in progress and all contributions are welcome! Whether it's adding a new action, fixing a bug, or improving the documentation, feel free to:
-
-    Fork the repository.
-    Create a new branch (git checkout -b feature/your-amazing-feature).
-    Make your changes and commit them (git commit -m 'Add some amazing feature').
-    Push to the branch (git push origin feature/your-amazing-feature).
-    Open a Pull Request.
 
 📄 License
 
