@@ -27,7 +27,7 @@ The Noah Kernel is more than just a backend; it's a design philosophy. The core 
 
 This makes the kernel incredibly reusable for other turn-based games.
 
-### 的核心组件 (Key Components)
+### Key Components
 
 The kernel is built around a few elegant core classes:
 
