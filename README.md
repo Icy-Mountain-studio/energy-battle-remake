@@ -71,7 +71,8 @@ Here's a simplified look at the structure for a single action:
 ```
 
 By changing this dictionary, you can fundamentally change the game without ever touching the noah.py kernel file.
-⛓️ The Resolution Pipeline: d_exec & StreamProcessor
+
+## ⛓️ The Resolution Pipeline: d_exec & StreamProcessor
 
 This is arguably the most powerful feature of the Noah Kernel.
 
