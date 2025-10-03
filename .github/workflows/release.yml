@@ -3,13 +3,14 @@ name: Build and Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*"   # 只有打 tag 才触发，比如 v1.0.0
 
 jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,7 +23,7 @@ jobs:
       - name: Build Windows exe
         run: pyinstaller --onefile --console ark.py
 
-      - name: Upload Windows exe
+      - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
           name: windows-binary
@@ -32,8 +33,11 @@ jobs:
     runs-on: ubuntu-latest
     container: python:3.11-alpine
     steps:
-      - apk add --no-cache gcc musl-dev libffi-dev
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: apk add --no-cache gcc musl-dev libffi-dev
 
       - name: Install PyInstaller
         run: pip install pyinstaller
@@ -51,9 +55,17 @@ jobs:
     needs: [windows, linux]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
         with:
-          path: ./artifacts
+          name: windows-binary
+          path: ./artifacts/windows
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binary
+          path: ./artifacts/linux
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
