@@ -286,7 +286,297 @@ Expression = {
     '/ark/setting/desc/wave_distance': 'Range of "Energy Wave"',
     '/ark/setting/desc/team_size': "Players per AI team [1 = free-for-all]",
     '/ark/setting/desc/assist_team': "Should the first AI team cooperate with humans? [0-No 1-Yes]",
+},
+
+
+"ja_jp": {
+    '/ark/round-title': "第$0ラウンド\n"+'-'*10,
+    '/share/endl': "",
+    '/share/dr-endl': "\n",
+    '/core/ask-for-act': f"{C['WHITE']}プレイヤー$0 {C['GREEN']}[HP $1 エネルギー $2 位置 $3]{C['RESET']}\n推奨 $4 >  ",
+    '/core/selected': '自動選択: $0',
+    '/core/no-available-act': "プレイヤー$0は行動不能のため、このターンで脱落します。",
+    '/core/actlist-title': f"選択可能なアクション\n-------------\n   アクション  {C['CYAN']}(コスト){C['RESET']}\n",
+    '/core/ai-dealing': f"{C['MAGENTA']}AIが思考中...",
+    '/core/ai-completed': f"AIの思考完了。{C['RESET']}",
+    '/core/typing-delay': "0.3",
+
+    '/act/1/name': f"{C['YELLOW']}チャージ{C['RESET']}",
+    '/act/2/name': f"{C['RED']}ショット{C['RESET']}",
+    '/act/3/name': f"{C['CYAN']}防御{C['RESET']}",
+    '/act/4/name': f"{C['GREEN']}移動{C['RESET']}",
+    '/act/5/name': f"{C['MAGENTA']}反射{C['RESET']}",
+    '/act/6/name': f"{C['CYAN']}エネルギー波{C['RESET']}",
+    '/act/7/name': f"{C['MAGENTA']}ブラックホール{C['RESET']}",
+    '/act/rl/name': f"{C['WHITE']}ゲームルール表示{C['RESET']}",
+    '/act/stt/name': f"{C['WHITE']}全プレイヤー状況表示{C['RESET']}",
+    '/act/bk/name': f"{C['WHITE']}降参{C['RESET']}",
+
+    '/act/1/price': "エネルギー+1",
+    '/act/2/price': "1エネルギー/発",
+    '/act/3/price': "0",
+    '/act/4/price': "0",
+    '/act/5/price': "2",
+    '/act/6/price': "4",
+    '/act/7/price': "5",
+    '/act/rl/price': "0",
+    '/act/stt/price': "0",
+    '/act/bk/price': "0",
+
+    '/act/1/dealed': f"{C['YELLOW']}プレイヤー$0は虚空からエネルギーを1得た。現在のエネルギー: $1。{C['RESET']}",
+
+    '/act/2/ask-target': "ターゲット (Enterでキャンセル) > ",
+    '/act/2/cancel': f"{C['YELLOW']}[ショットをキャンセルしました。]{C['RESET']}",
+    '/act/2/ask-seth': f"射撃方向\n    {C['YELLOW']}[ 1 上 / 0 水平 / -1 下 / 空欄で自動 ]{C['RESET']} ",
+    '/act/2/ask-lv': f"発射するエネルギー量 {C['YELLOW']}[1/2/3/空欄で自動]{C['RESET']} ",
+    '/act/2/auto-lv': f"レベル{C['YELLOW']}$0{C['RESET']}を自動選択しました。",
+    '/act/2/auto-seth': f"方向{C['YELLOW']}$0{C['RESET']}を自動選択しました。",
+    '/act/2/has-sent': f"{C['YELLOW']}[エネルギー弾を発射しました...]{C['RESET']}\n",
+
+    '/act/2/battle': "-- プレイヤー$0が階層$1から$2方向へエネルギーを発射 --",
+    '/act/2/shot-miss': "プレイヤー$0のエネルギー弾($2)はプレイヤー$1を狙ったが、外れた…",
+    '/act/2/shot': "プレイヤー$0のエネルギー弾($2)がプレイヤー$1に向かう。",
+    '/act/2/crash': "両者のエネルギー弾が$0発分、互いに相殺された。",
+    '/act/2/anti': "プレイヤー$0はプレイヤー$1に対抗し、エネルギー弾を$2発発射！",
+    '/act/2/reflect': f"プレイヤー$0のエネルギー弾($1)は{C['MAGENTA']}反射{C['RED']}された！",
+    '/act/2/defend': f"プレイヤー$0の{C['CYAN']}防御{C['RED']}が$1ダメージを防いだ。",
+    '/act/2/final-hurt': "最終的に、プレイヤー$0は$1ダメージを受けた。残りHP: $2。",
+    '/act/2/wonderful': "素晴らしい応酬だ！",
+    '/act/2/peace': "最終的に、誰も傷つかなかった。",
+
+    '/act/2/error-existPL': "このプレイヤーは存在しないか、既に脱落しています。",
+    '/act/2/error-self': "自分自身やAIのチームメイトをターゲットにできません。\n",
+    '/act/2/error-int': "整数を入力してください。",
+    '/act/2/error-int-or-empty': "整数を入力するか、空欄にしてください。",
+    '/act/2/error-no-lv': "その発射レベルは存在しません。",
+    '/act/2/error-no-energy': "エネルギーが不足しています。",
+    '/act/2/error-no-seth': "その射撃方向は存在しません。",
+
+    '/act/3/dealed': f"{C['CYAN']}プレイヤー$0はこのターン防御している。{C['RESET']}",
+
+    '/act/4/ask': f"移動する階層数を入力してください（負数で下降）{C['GREEN']}[-$0～$0]{C['RESET']} ",
+    '/act/4/dealed': f"{C['GREEN']}プレイヤー$0は$1階層移動し、階層$2に到達した。{C['RESET']}",
+    '/act/4/out-of-map': "その移動はマップの境界を越えてしまいます。\n",
+    '/act/4/error-int': "整数を入力してください。\n",
+
+    '/act/5/dealed': f"{C['MAGENTA']}プレイヤー$0は反射を起動した。{C['RESET']}",
+
+    '/act/stt/main-exp': "プレイヤー$0 / HP $1 / エネルギー $2 / 位置 $3 / 与ダメージ $4 / キル数 $5",
+    '/act/stt/select-team': "どのチームの状況を表示しますか？ [0～$0 / 空欄で全体] ",
+
+    '/act/6/battle': "-- プレイヤー$0が階層$1から$2方向へエネルギー波を放つ --",
+    '/act/6/ask-seth': f"射撃方向\n    {C['CYAN']}[ 1 上 / 0 水平 / -1 下 / 空欄で自動 / Spaceでキャンセル ]{C['RESET']} ",
+    '/act/6/cancel': f"{C['CYAN']}[エネルギー波をキャンセルしました。]{C['RESET']}",
+    '/act/6/has-sent': f"{C['CYAN']}[エネルギー波を発射しました...]{C['RESET']}\n",
+    '/act/6/error-no-seth': "その射撃方向は存在しません。",
+    '/act/6/error-int-or-empty': "整数を入力するか、空欄にしてください。",
+    '/act/6/shot-miss': "プレイヤー$0のエネルギー波(威力$2)はプレイヤー$1に当たらなかった。",
+    '/act/6/shot': "プレイヤー$0のエネルギー波(威力$2)がプレイヤー$1に向かっている。",
+    '/act/6/crash': "両者のエネルギーが$0ポイント相殺された。",
+    '/act/6/reflect': f"プレイヤー$0のエネルギー波は{C['MAGENTA']}反射{C['CYAN']}された！",
+    '/act/6/anti': "プレイヤー$0もプレイヤー$1に対抗してエネルギーを$2発射した。",
+    '/act/6/defend': "プレイヤー$0の防御が$1ダメージを防いだ。",
+    '/act/6/final-hurt': "プレイヤー$0は$1ダメージを受けた。残りHP: $2。",
+    '/act/6/wonderful': "エネルギー波は絶大な威力だ！",
+    '/act/6/peace': "NONE",
+    '/act/6/auto-seth': f"方向{C['CYAN']}$0{C['RESET']}を自動選択しました。",
+
+    '/act/7/ask': "行動を無効化するターゲットを入力してください: ",
+    '/act/7/result': f"{C['MAGENTA']}プレイヤー$0のアクション「$1」は、プレイヤー$2のブラックホールに永久に飲み込まれた。{C['RESET']}",
+
+    '/share/poor': f"{C['MAGENTA']}エネルギーが足りません。先にチャージしてはどうでしょう？{C['RESET']}",
+    '/share/out-of-range': "許容範囲内の値を入力してください。",
+    '/share/not-found': "ターゲットが見つかりません。",
+    '/share/unable': f"{C['RED']}このアクションは現在使用できません。{C['RESET']}",
+
+    '/core/dead': f"{C['RED']}\nこのターンで$1人のプレイヤーが脱落しました:\nプレイヤー $0{C['RESET']}",
+    '/core/dead-team': "チーム$0は$1人のメンバーを失った。",
+    '/core/human-dead': f"{C['RED']}\nプレイヤー$0は脱落しました。\n最後の攻撃: プレイヤー$2が「$3」の解決中にあなたに$1ダメージを与えました。\nEnterキーで続行してください。{C['RESET']}",
+    '/ark/game-over-nobody': f"{C['CYAN']}\n///// ゲームオーバー：生存者なし /////{C['RESET']}\n",
+    '/ark/game-over': f"{C['CYAN']}\n///// ゲームオーバー：プレイヤー$0の勝利！ /////{C['RESET']}\n",
+    "/ark/game-over-by-team": f"{C['CYAN']}\n///// ゲームオーバー：チーム$0の勝利！ /////{C['RESET']}\n",
+    '/ark/welcome': "# エネルギーバトル - リメイク 1.2-5 #\n",
+
+    '/act/1/rule': f"{C['YELLOW']}チャージ{C['RESET']} - {C['WHITE']}エネルギーを1増加させます。{C['RESET']}",
+    '/act/3/rule': f"{C['CYAN']}防御{C['RESET']} - {C['WHITE']}このターンの間、防御状態になります。攻撃アクションによるダメージを受けません。{C['RESET']}",
+    '/act/5/rule': f"{C['MAGENTA']}反射{C['RESET']} - {C['WHITE']}攻撃された際、ダメージを攻撃者にそのまま返します。{C['RESET']}",
+    '/act/6/rule': f"{C['CYAN']}エネルギー波{C['RESET']} - {C['WHITE']}選択した方向に範囲攻撃(AOE)を放ち、その直線上の全プレイヤーに5ダメージを与えます。{C['RESET']}",
+    '/act/7/rule': f"{C['MAGENTA']}ブラックホール{C['RESET']} - {C['WHITE']}選択したプレイヤーがこのターン選んだアクションを飲み込み、無効化します。{C['RESET']}",
+
+    '/ark/opt-title': "オプションを選択してください\n-----------------------\n",
+    '/ark/opt/1': "新しいバトルを開始",
+    '/ark/opt/2': "バトル設定",
+    '/ark/opt/3': "ゲームを終了",
+    '/ark/break': "バトルから離脱しました。",
+    "/ark/exit": f"{C['YELLOW']}[ゲームを終了します...]{C['RESET']}",
+
+    '/ark/setting/title': f"{C['CYAN']}// バトルパラメータ設定{C['RESET']}",
+    '/ark/setting/intro': "ここではデフォルトのバトルパラメータを調整できます。\n変更したい項目を選択するか、Enterキーでメインメニューに戻ります。\n",
+    '/ark/setting/current': "現在の設定",
+    '/ark/setting/prompt': "変更するパラメータの番号を入力してください [Enterで戻る]\n-> ",
+    '/ark/setting/input-new': "新しい値を入力してください (現在値: $0)\n[Enterで変更しない] -> ",
+    '/ark/setting/updated': "パラメータ「$0」が $1 に更新されました。",
+    '/ark/setting/exit': "バトル設定完了。ゲームをお楽しみください！",
+    '/ark/setting/error-invalid-choice': f"{C['RED']}無効な選択です。もう一度お選びください。{C['RESET']}",
+    '/ark/setting/error-not-int': f"{C['RED']}無効な入力です。整数が必要です。{C['RESET']}",
+    '/ark/setting/error-non-negative': "このパラメータは負でない数値である必要があります。",
+    '/ark/setting/error-real-num-mismatch': "人間プレイヤーの数($0)は総プレイヤー数($1)を超えることはできません。自動的に修正されました。",
+    '/ark/setting/error-map-range': "マップサイズ(現在値: $0)は正の整数である必要があります。推奨範囲は1から10です。",
+
+    '/ark/setting/desc/num': "総プレイヤー数",
+    '/ark/setting/desc/real': "人間プレイヤーの数",
+    '/ark/setting/desc/map': "マップサイズ（垂直階層）",
+    '/ark/setting/desc/initHP': "各プレイヤーの初期HP",
+    '/ark/setting/desc/shot_distance': '「ショット」の射程',
+    '/ark/setting/desc/wave_distance': '「エネルギー波」の射程',
+    '/ark/setting/desc/team_size': "AIチームの人数 [1 = 個人戦]",
+    '/ark/setting/desc/assist_team': "最初のAIチームは人間と協力するか [0-No 1-Yes]",
+},
+
+"zh_tw": {
+    '/ark/round-title': "第$0回合\n"+'-'*10,
+    '/share/endl': "",
+    '/share/dr-endl': "\n",
+    '/core/ask-for-act': f"{C['WHITE']}玩家$0 {C['GREEN']}[血量$1 能量$2 位置$3]{C['RESET']}\n推薦$4 >  ",
+    '/core/selected': '已自動選擇$0',
+    '/core/no-available-act': "玩家$0沒有可用行動，將在本回合陣亡",
+    '/core/actlist-title': f"可選行動\n-------\n   行動  {C['CYAN']}(價格){C['RESET']}\n",
+    '/core/ai-dealing': f"{C['MAGENTA']}AI正在決策...",
+    '/core/ai-completed': f"AI決策已完成。{C['RESET']}",
+    '/core/typing-delay': "1",
+
+    '/act/1/name': f"{C['YELLOW']}充能{C['RESET']}",
+    '/act/2/name': f"{C['RED']}射擊{C['RESET']}",
+    '/act/3/name': f"{C['CYAN']}防禦{C['RESET']}",
+    '/act/4/name': f"{C['GREEN']}移動{C['RESET']}",
+    '/act/5/name': f"{C['MAGENTA']}反射{C['RESET']}",
+    '/act/6/name': f"{C['CYAN']}能量波{C['RESET']}",
+    '/act/7/name': f"{C['MAGENTA']}黑洞{C['RESET']}",
+    '/act/rl/name': f"{C['WHITE']}查看遊戲說明{C['RESET']}",
+    '/act/stt/name': f"{C['WHITE']}全場玩家狀態{C['RESET']}",
+    '/act/bk/name': f"{C['WHITE']}退出戰場{C['RESET']}",
+
+    '/act/1/price': "增加1點能量",
+    '/act/2/price': "1點能量/發",
+    '/act/3/price': "0",
+    '/act/4/price': "0",
+    '/act/5/price': "2",
+    '/act/6/price': "4",
+    '/act/7/price': "5",
+    '/act/rl/price': "0",
+    '/act/stt/price': "0",
+    '/act/bk/price': "0",
+
+    '/act/1/dealed': f"{C['YELLOW']}玩家$0向真空借走了1點能量，現在擁有$1點能量{C['RESET']}",
+
+    '/act/2/ask-target': "目標(直接按Enter則取消) > ",
+    '/act/2/cancel': f"{C['YELLOW']}[射擊已取消...]{C['RESET']}",
+    '/act/2/ask-seth': f"射擊方向\n    {C['YELLOW']}[ 1向上 / 0平射 / -1向下 / 不填自動 ] {C['RESET']}",
+    '/act/2/ask-lv': f"發射的能量大小 {C['YELLOW']}[1/2/3/留空自動] {C['RESET']}",
+    '/act/2/auto-lv': f"已選擇{C['YELLOW']}$0{C['RESET']}級",
+    '/act/2/auto-seth': f"已替您輸入{C['YELLOW']}$0{C['RESET']}",
+    '/act/2/has-sent': f"{C['YELLOW']}[能量已發射...]{C['RESET']}\n",
+
+    '/act/2/battle': "-- 玩家$0在第$1層向$2方向發射了能量 --",
+    '/act/2/shot-miss': "玩家$0的$2發能量飛向玩家$1，但是偏了..",
+    '/act/2/shot': "玩家$0的$2發能量飛向玩家$1",
+    '/act/2/crash': "兩人有$0發能量已經互相湮滅",
+    '/act/2/anti': "玩家$0射出了$2發能量來反擊玩家$1",
+    '/act/2/reflect': f"玩家$0的$1發能量被{C['MAGENTA']}反射{C['RED']}了！",
+    '/act/2/defend': f"玩家$0的{C['CYAN']}防禦{C['RED']}抵擋住了$1點傷害",
+    '/act/2/final-hurt': "最終，玩家$0承受$1點傷害，剩餘HP $2",
+    '/act/2/wonderful': "精彩的周旋！",
+    '/act/2/peace': "最終沒有人受傷",
+
+    '/act/2/error-existPL': "這個玩家不存在或者已經淘汰了",
+    '/act/2/error-self': "您選擇的玩家是AI隊友或自己\n",
+    '/act/2/error-int': "請輸入一個整數",
+    '/act/2/error-int-or-empty': "請輸入一個整數或不填",
+    '/act/2/error-no-lv': "沒有那個發射等級喔",
+    '/act/2/error-no-energy': "能量不夠喔",
+    '/act/2/error-no-seth': "沒有那個發射方向喔",
+
+    '/act/3/dealed': f"{C['CYAN']}玩家$0防禦了一回合{C['RESET']}",
+
+    '/act/4/ask': f"請輸入想要上升（負數則是下降）的層數{C['GREEN']}[-$0~$0]{C['RESET']} ",
+    '/act/4/dealed': f"{C['GREEN']}玩家$0移動了$1層並抵達了第$2層{C['RESET']}",
+    '/act/4/out-of-map': "這樣會越過地圖邊界的\n",
+    '/act/4/error-int': "請輸入一個整數\n",
+
+    '/act/5/dealed': f"{C['MAGENTA']}玩家$0啟用了反射{C['RESET']}",
+
+    '/act/stt/main-exp': "玩家$0 / 血量$1 能量$2 位置$3 輸出$4 擊殺$5",
+    '/act/stt/select-team': "查看哪個隊伍的所有玩家狀態? [0~$0 空則全場] ",
+
+    '/act/6/battle': "-- 玩家$0在第$1層向$2方向放出了能量波 --",
+    '/act/6/ask-seth': f"射擊方向\n    {C['CYAN']}[ 1向上 / 0平射 / -1向下 / 不填自動 / 空白鍵取消 ] {C['RESET']}",
+    '/act/6/cancel': f"{C['CYAN']}[能量波已取消...]{C['RESET']}",
+    '/act/6/has-sent': f"{C['CYAN']}[能量波已發射...]{C['RESET']}\n",
+    '/act/6/error-no-seth': "這個發射方向不存在",
+    '/act/6/error-int-or-empty': "請輸入一個整數或不填",
+    '/act/6/shot-miss': "玩家$0能量波的$2發能量未能擊中玩家$1",
+    '/act/6/shot': "玩家$0的$2發能量正飛向玩家$1",
+    '/act/6/crash': "$0點能量互相湮滅",
+    '/act/6/reflect': f"玩家$0的能量波被{C['MAGENTA']}反射{C['CYAN']}了！",
+    '/act/6/anti': "玩家$0也發射了$2發能量來反擊玩家$1",
+    '/act/6/defend': "玩家$0的防禦抵擋住了$1點傷害",
+    '/act/6/final-hurt': "玩家$0承受$1點傷害，剩餘HP $2",
+    '/act/6/wonderful': "能量波威力巨大！",
+    '/act/6/peace': "NONE",
+    '/act/6/auto-seth': f"已替您輸入{C['CYAN']}$0{C['RESET']}",
+
+    '/act/7/ask': "請輸入您要封禁其行動的對象 ",
+    '/act/7/result': f"{C['MAGENTA']}玩家$0的行動$1{C['MAGENTA']}已被玩家$2的黑洞永遠吞噬{C['RESET']}",
+
+    '/share/poor': f"{C['MAGENTA']}您太窮了，要不還是先去充能吧...{C['RESET']}",
+    '/share/out-of-range': "請輸入一個範圍內的值",
+    '/share/not-found': "目標不存在",
+    '/share/unable': f"{C['RED']}此行動不可用{C['RESET']}",
+
+    '/core/dead': f"{C['RED']}\n共$1位玩家在本回合陣亡\n$0號{C['RESET']}",
+    '/core/dead-team': "隊伍$0陣亡$1人",
+    '/core/human-dead': f"{C['RED']}\n玩家$0已陣亡\n最後一擊: 玩家$2在$3{C['RED']}結算中對您造成$1點傷害\n按Enter鍵確認{C['RESET']}",
+    '/ark/game-over-nobody': f"{C['CYAN']}\n///// 遊戲結束 無人存活 /////{C['RESET']}\n",
+    '/ark/game-over': f"{C['CYAN']}\n///// 遊戲結束 玩家$0勝利 /////{C['RESET']}\n",
+    "/ark/game-over-by-team": f"{C['CYAN']}\n///// 遊戲結束 隊伍$0勝利 /////{C['RESET']}\n",
+    '/ark/welcome': "# 能量之戰-重製版 1.2-5 #\n",
+
+    '/act/1/rule': f"{C['YELLOW']}充能{C['RESET']} - {C['WHITE']}把你的能量增加1點{C['RESET']}",
+    '/act/3/rule': f"{C['CYAN']}防禦{C['RESET']} - {C['WHITE']}在本回合內進入防禦狀態，攻擊類行動無法傷害你{C['RESET']}",
+    '/act/5/rule': f"{C['MAGENTA']}反射{C['RESET']} - {C['WHITE']}當有人對你使用攻擊類行動時，反過來讓對方承受傷害{C['RESET']}",
+    '/act/6/rule': f"{C['CYAN']}能量波{C['RESET']} - {C['WHITE']}向某個方向發射AOE攻擊，面向選定方向上的全部玩家，傷害5點{C['RESET']}",
+    '/act/7/rule': f"{C['MAGENTA']}黑洞{C['RESET']} - {C['WHITE']}吞噬選定玩家本回合的行動，使其無效並不得再使用{C['RESET']}",
+
+    '/ark/opt-title': "請選擇\n-------\n",
+    '/ark/opt/1': "開啟戰局",
+    '/ark/opt/2': "配置戰局",
+    '/ark/opt/3': "退出遊戲",
+    '/ark/break': "已退出戰局",
+    "/ark/exit": f"{C['YELLOW']}[即將退出遊戲]{C['RESET']}",
+
+    '/ark/setting/title': f"{C['CYAN']}// 戰場參數配置{C['RESET']}",
+    '/ark/setting/intro': "您可以透過這裡調整戰場的預設參數\n請選擇要修改的項，或直接按Enter返回主選單\n",
+    '/ark/setting/current': "當前設定",
+    '/ark/setting/prompt': "請輸入要修改的參數編號 [Enter返回]\n-> ",
+    '/ark/setting/input-new': "請輸入新的值(當前 $0)\n[Enter保持不變] -> ",
+    '/ark/setting/updated': "參數$0已更新為 $1。",
+    '/ark/setting/exit': "戰場配置完成，祝您遊戲愉快！",
+    '/ark/setting/error-invalid-choice': f"{C['RED']}沒有這個選項... 請重新選擇{C['RESET']}",
+    '/ark/setting/error-not-int': f"{C['RED']}輸入無效，需要整數{C['RESET']}",
+    '/ark/setting/error-non-negative': "這個參數必須是非負數",
+    '/ark/setting/error-real-num-mismatch': "真人玩家數量($0)不能超過總玩家數量($1)，已自動修正",
+    '/ark/setting/error-map-range': "地圖大小(當前$0)必須是正整數，且建議範圍在1到10之間",
+
+    '/ark/setting/desc/num': "總玩家數量",
+    '/ark/setting/desc/real': "真人玩家數量",
+    '/ark/setting/desc/map': "地圖大小",
+    '/ark/setting/desc/initHP': "每位玩家的初始血量",
+    '/ark/setting/desc/shot_distance': '「射擊」的射程',
+    '/ark/setting/desc/wave_distance': '「能量波」的射程',
+    '/ark/setting/desc/team_size': "每個AI隊伍的人數[1-各自為戰]",
+    '/ark/setting/desc/assist_team': "第一個AI隊伍是否與人類合作？[0-No 1-Yes]",
 }
+
 }
 
 Expression["zh_cn"]['/act/2/rule'] = "\n".join([
@@ -343,3 +633,63 @@ Expression["en_us"]["/ark/rules"] = "\n".join([
     "Below are the descriptions for each action.",
     "",
 ])
+
+
+Expression["ja_jp"]['/act/2/rule'] = "\n".join([
+    f"{C['RED']}ショット{C['RESET']} - {C['WHITE']}他のプレイヤーを攻撃してダメージを与えます。",
+    "       一度に最大3発のエネルギー弾を発射できます。",
+    "       射撃方向が正しくないと弾は当たらず、ミスになります。",
+    "       ターゲットが違う階層にいる場合は、適切な射撃方向を選んでください。",
+    "       もしターゲットも同時にこちらを撃ってきた場合、",
+    f"       エネルギー弾の一部または全部が互いに相殺されることがあります。{C['RESET']}",
+])
+
+Expression["ja_jp"]['/act/4/rule'] = "\n".join([
+    f"{C['GREEN']}移動{C['RESET']} - {C['WHITE']}自分の位置を変更します。敵の射程外に移動することができます。",
+    f"       ただし、マップのサイズは通常限られています。デフォルトは3階層（例：上、中、下）です。{C['RESET']}",
+])
+
+Expression["ja_jp"]["/ark/rules"] = "\n".join([
+    "",
+    "これはターン制のマルチプレイヤー戦略ゲームです。",
+    "デフォルト設定では、人間1人とAI9人がそれぞれ1HPで個人戦を始めます。",
+    "各ターン、プレイヤーは対応する番号を入力してアクションを選択します。",
+    "アクションを選択せずにEnterキーを押すと、AIが自動で選択します（自動選択）。",
+    "アクションにはそれぞれ独自の効果とエネルギーコストがあります。",
+    "目標は、他のチームのプレイヤーを全て倒して勝利することです。",
+    "同じチームのプレイヤー同士は攻撃できません。",
+    "以下に各アクションの説明を示します。",
+    "",
+])
+
+
+
+Expression["zh_tw"]["/ark/rules"] = "\n".join([
+    "",
+    "這是一個回合制的多人對戰策略遊戲",
+    "預設設定下每人1點血量、1個人類和9個AI玩家各自為戰",
+    "每位玩家每回合可以透過輸入編號選擇一項行動",
+    "如果你在選擇行動時直接按下Enter鍵",
+    "將會由AI幫你自動決策",
+    "不同的行動具有不同的效果和價格",
+    "你需要擊敗所有其他隊伍的玩家並取得勝利",
+    "同一隊伍的玩家之間不能互相攻擊",
+    "以下是各行動的說明",
+    "",
+])
+
+
+Expression["zh_tw"]['/act/2/rule'] = "\n".join([
+    f"{C['RED']}射擊{C['RESET']} - {C['WHITE']}向其他玩家射擊並造成傷害",
+    "       射擊可以一次性射出最多3發能量",
+    "       射擊方向只有對準了目標才有效，否則會射偏",
+    "       如果對方的位置與你不同，請選擇恰當的射擊方向",
+    "       如果對方也同時向你射擊",
+    f"       你們的能量可能會有一部分甚至全部互相湮滅{C['RESET']}",
+])
+
+Expression["zh_tw"]['/act/4/rule'] = "\n".join([
+    f"{C['GREEN']}移動{C['RESET']} - {C['WHITE']}移動你的位置，你可以移動到對方射程之外",
+    f"       但是地圖大小通常有限，預設為上中下各一層共3層{C['RESET']}",
+])
+
