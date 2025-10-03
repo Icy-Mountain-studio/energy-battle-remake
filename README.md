@@ -106,7 +106,7 @@ ark.py serves as the perfect example of a "client" for the Noah Kernel. Its main
     Initializing the noah.Core with this environment and these actions.
     Starting the main game loop.
 
-🛠️ Getting Started
+## 🛠️ Getting Started
 
 You don't need any special libraries, just Python!
 
