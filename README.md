@@ -60,13 +60,13 @@ When `ark.py` initializes the `Core`, it passes a large dictionary that defines 
 Here's a simplified look at the structure for a single action:
 
 ```python
-"1": { // The key players type to select this action
-    "price": charge_price,      // A function to calculate the energy cost
-    "priority": 0,              // Execution priority (higher runs first)
-    "able": able_forever,       // A function that returns True if the action is usable
-    "ai": charge_ai,            // A function that returns a weight for AI decision-making
-    "s_exec": charge_s,         // The function to run during the Selection phase
-    "d_exec": [charge_d],       // A list of functions to run during the Resolution phase
+"1": { # The key players type to select this action
+    "price": charge_price,      # A function to calculate the energy cost
+    "priority": 0,              # Execution priority (higher runs first)
+    "able": able_forever,       # A function that returns True if the action is usable
+    "ai": charge_ai,            # A function that returns a weight for AI decision-making
+    "s_exec": charge_s,         # The function to run during the Selection phase
+    "d_exec": [charge_d],       # A list of functions to run during the Resolution phase
 },
 ```
 
@@ -82,13 +82,16 @@ The StreamProcessor takes an initial data stream (e.g., information about an att
 Let's take ark.py's Shoot action as a perfect example. Its d_exec list is:
 
 ```Python
-"d_exec": [
-    crossfire_evaluate,  // 1. Calculate initial damage and who gets hit.
-    crossfire_crash,     // 2. Check if a target is also shooting back, and annihilate projectiles.
-    crossfire_reflect,   // 3. Check if the target reflected the damage.
-    crossfire_defend,    // 4. Check if the target defended, reducing damage.
-    crossfire_final      // 5. Apply the final, calculated damage and print results.
-]
+"2": {
+    ...,
+    "d_exec": [
+        crossfire_evaluate,  # 1. Calculate initial damage and who gets hit.
+        crossfire_crash,     # 2. Check if a target is also shooting back, and annihilate projectiles.
+        crossfire_reflect,   # 3. Check if the target reflected the damage.
+        crossfire_defend,    # 4. Check if the target defended, reducing damage.
+        crossfire_final      # 5. Apply the final, calculated damage and print results.
+    ]
+}
 ```
 
 This pipeline approach makes complex interactions clean, readable, and easy to modify. Want to add a new "Dodge" mechanic? Just insert a crossfire_dodge function into the pipeline!
