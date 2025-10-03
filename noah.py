@@ -49,7 +49,7 @@ C = {
 class IO():
     """Defines an IO class for managing input, output, and logging."""
 
-    def __init__(self, exp={}, logpath="log"):
+    def __init__(self, exp={}, logpath="log", delay=0.01):
         """
         Initializes the IO manager.
 
@@ -67,7 +67,7 @@ class IO():
 
         self.colors = C
         self.indent = 0     # Tracks the current indentation level for formatted output.
-        self.typing_delay = 0.01  # Delay for the typewriter effect. Set to 0 to disable.
+        self.typing_delay = delay  # Delay for the typewriter effect. Set to 0 to disable.
 
     def out(self, key, mode="sh", real_end="\n", dr=False, imp=[], indent=True, color=None):
         """
@@ -728,10 +728,10 @@ class Core():
                 player = self.PlDict[_pl]
                 if player.real:
                     # Pause for human player's death message.
-                    self.ui.typing_delay *= 7
+                    self.ui.typing_delay *= 5
                     last_hit = player.HPlog[-1] if player.HPlog else [0, "Unknown", "Fate"]
                     self.ui.inp('/core/human-dead', imp=[_pl] + last_hit)
-                    self.ui.typing_delay /= 7
+                    self.ui.typing_delay /= 5
 
                 try:
                     # Attribute the kill to the source of the last damage.
