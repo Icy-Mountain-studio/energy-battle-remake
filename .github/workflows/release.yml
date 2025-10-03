@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - "v*"   # 只有打 tag 才触发，比如 v1.0.0
+      - "v*"   # 只有 push tag 才触发，例如 v1.0.0
 
 jobs:
   windows:
@@ -31,18 +31,19 @@ jobs:
 
   linux:
     runs-on: ubuntu-latest
-    container: python:3.11-alpine
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
-        run: apk add --no-cache gcc musl-dev libffi-dev
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
       - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Build Linux binary (musl)
+      - name: Build Linux binary
         run: pyinstaller --onefile --console ark.py
 
       - name: Upload Linux binary
@@ -73,4 +74,3 @@ jobs:
           files: ./artifacts/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.JERRY }}
-
