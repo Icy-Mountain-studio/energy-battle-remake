@@ -94,6 +94,7 @@ Expression = {
     '/act/6/auto-seth': f"已替你输入{C['CYAN']}$0{C['RESET']}",
 
     '/act/7/ask': "请输入你要封禁行动的对象 ",
+    "/act/7/self-selected": "不能选择自己",
     '/act/7/result': f"{C['MAGENTA']}玩家$0的行动$1{C['MAGENTA']}已被玩家$2的黑洞永远吞噬{C['RESET']}",
 
     '/share/poor': f"{C['MAGENTA']}你太穷了 要不还是先去充能吧。。{C['RESET']}",
@@ -237,6 +238,7 @@ Expression = {
     '/act/6/auto-seth': f"Auto-selected direction {C['CYAN']}$0{C['RESET']}.",
 
     '/act/7/ask': "Enter the target whose action you want to disable: ",
+    "/act/7/self-selected": "You cannot target yourself",
     '/act/7/result': f"{C['MAGENTA']}Player $0's action '$1{C['MAGENTA']}' has been permanently swallowed by Player $2's Black Hole.{C['RESET']}",
 
     '/share/poor': f"{C['MAGENTA']}Not enough energy. Maybe charge up first?{C['RESET']}",
@@ -382,6 +384,7 @@ Expression = {
     '/act/6/auto-seth': f"方向{C['CYAN']}$0{C['RESET']}を自動選択しました。",
 
     '/act/7/ask': "行動を無効化するターゲットを入力してください: ",
+    "/act/7/self-selected": "自分自身を選択できません",
     '/act/7/result': f"{C['MAGENTA']}プレイヤー$0のアクション「$1」は、プレイヤー$2のブラックホールに永久に飲み込まれた。{C['RESET']}",
 
     '/share/poor': f"{C['MAGENTA']}エネルギーが足りません。先にチャージしてはどうでしょう？{C['RESET']}",
@@ -526,6 +529,7 @@ Expression = {
     '/act/6/auto-seth': f"已替您輸入{C['CYAN']}$0{C['RESET']}",
 
     '/act/7/ask': "請輸入您要封禁其行動的對象 ",
+    "/act/7/self-selected": "不能選擇自己",
     '/act/7/result': f"{C['MAGENTA']}玩家$0的行動$1{C['MAGENTA']}已被玩家$2的黑洞永遠吞噬{C['RESET']}",
 
     '/share/poor': f"{C['MAGENTA']}您太窮了，要不還是先去充能吧...{C['RESET']}",

@@ -505,7 +505,11 @@ def blackhole_s(pl, core, auto):
                 inp_target = core.ui.inp("./ask")
                 try:
                     get = core.PlDict[int(inp_target)]
-                    break
+                    if get != pl:
+                        break
+                    else:
+                        core.ui.out(["./self-selected", "/share/endl"], color="RED")
+
                 except (ValueError, KeyError):
                     core.ui.out("/share/not-found", color="RED")
 
@@ -539,6 +543,10 @@ def blackhole_d(InStream, args):
     act, core = args
     act.pay(core)
     target = core.PlDict[act.target]
+    myself = core.PlDict[act.ownerID]
+
+    if target.real or myself.real:
+        core.ui.typing_delay = core.org_delay*5
 
     # Add the target's chosen actions to their 'unable' list.
     block = [i[0] for i in target.acts]
@@ -550,6 +558,11 @@ def blackhole_d(InStream, args):
 
     block_out = ", ".join([core.ui.get(f"/act/{i}/name") for i in block])
     core.ui.out("./result", imp=[target.id, block_out, act.ownerID])
+
+    if target.real or myself.real:
+        core.ui.typing_delay = 0
+        noah.time.sleep(0.5)
+
     return None
 
 def move_d(InStream, args):
@@ -752,8 +765,18 @@ def ShowStatus_s(pl, core, auto):
 
 def break_s(pl, core, auto):
     """Selection logic for 'Surrender'."""
-    core._break = True
+    core.exit_game = True
     return (True, None)
+
+
+# Terminal check
+try:
+    from terminal_check import show_check_result
+    if not show_check_result():
+        quit()
+except ImportError:
+    pass  # Skip if module not found
+
 
 # ArkUI is the UI instance managed by the frontend, distinct from core.ui.
 # You can select a language here
@@ -798,7 +821,7 @@ BaseActDict = {
     },
     "6": { # Energy Wave
         "price": wave_price, "priority": -1, "able": wave_able,
-        "human_only": True, "ai": wave_ai, "weight": 1,
+        "human_only": False, "ai": wave_ai, "weight": 1,
         "s_exec": wave_s,
         "d_exec": [crossfire_wave_eval, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
     },
@@ -824,18 +847,205 @@ BaseActDict = {
     },
 }
 
+
+
+def validate_int(InStream, args):
+    core, ArkUI = args
+    if InStream["error"]:
+        return InStream
+
+    try:
+        InStream["value"] = int(InStream["value"])
+        return InStream
+    except ValueError:
+        InStream["error"] = "/ark/setting/error-not-int"
+        InStream["success"] = False
+        return InStream
+
+
+def validate_non_negative(InStream, args):
+    core, ArkUI = args
+    if InStream["error"]:
+        return InStream
+
+    if InStream["value"] < 0:
+        InStream["error"] = "/ark/setting/error-non-negative"
+        InStream["success"] = False
+        return InStream
+    return InStream
+
+
+def validate_int_and_non_negative(InStream, args):
+    InStream = validate_int(InStream, args)
+    InStream = validate_non_negative(InStream, args)
+    return InStream
+
+
+def validate_map_range(InStream, args):
+    """check if the map size reasonable"""
+    core, ArkUI = args
+    if InStream["error"] or InStream["key"] != "map":
+        return InStream
+
+    if InStream["value"] > 100:
+        InStream["error"] = "/ark/setting/error-map-range"
+        InStream["error_imp"] = [InStream["value"]]
+        InStream["success"] = False
+        return InStream
+    return InStream
+
+
+def validate_team_size(InStream, args):
+    """team_size >= 1"""
+    core, ArkUI = args
+    if InStream["error"] or InStream["key"] != "team_size":
+        return InStream
+
+    if InStream["value"] < 1:
+        InStream["value"] = 1  # auto correct
+        InStream["auto_corrected"] = True
+    return InStream
+
+
+def post_check_real_num_consistency(InStream, args):
+    """The amount of real player could not greater than the total"""
+    core, ArkUI = args
+    if InStream["error"] or InStream["key"] not in ["num", "real"]:
+        return InStream
+
+    BattleEnv = core.BattleEnv if hasattr(core, 'BattleEnv') else InitBattleEnv
+
+    # temply apply
+    temp_env = BattleEnv.copy()
+    temp_env[InStream["key"]] = InStream["value"]
+
+    if temp_env["real"] > temp_env["num"]:
+        # auto correct
+        if InStream["key"] == "real":
+            InStream["value"] = temp_env["num"]
+        else:
+            # It means that key == "num"
+            if temp_env["real"] > InStream["value"]:
+                BattleEnv["real"] = InStream["value"]
+                InStream["also_updated"] = [
+                    ("real", BattleEnv["real"])
+                ]
+
+        InStream["warning"] = "/ark/setting/error-real-num-mismatch"
+        InStream["warning_imp"] = [temp_env["real"], temp_env["num"]]
+
+    return InStream
+
+
+def apply_value(InStream, args):
+    """Apply the value to BattleEnv"""
+    core, ArkUI = args
+    if InStream["error"]:
+        return InStream
+
+    BattleEnv = core.BattleEnv if hasattr(core, 'BattleEnv') else InitBattleEnv
+    BattleEnv[InStream["key"]] = InStream["value"]
+    InStream["success"] = True
+    return InStream
+
+
+def display_result(InStream, args):
+    """Final step: show result"""
+    core, ArkUI = args
+
+    if InStream["error"]:
+        ArkUI.out(InStream["error"], imp=InStream.get("error_imp", []))
+        return InStream
+
+    setting_name = ArkUI.get(f"/ark/setting/desc/{InStream['key']}")
+
+    # Show warnings
+    if InStream.get("warning"):
+        ArkUI.out(InStream["warning"], imp=InStream.get("warning_imp", []))
+
+    # Show updated result
+    ArkUI.out("/ark/setting/updated", imp=[setting_name, InStream["value"]])
+
+    # the "also updated" args
+    if InStream.get("also_updated"):
+        for param_key, param_value in InStream["also_updated"]:
+            param_name = ArkUI.get(f"/ark/setting/desc/{param_key}")
+            ArkUI.out("/ark/setting/updated", imp=[param_name, param_value])
+
+    return InStream
+
+
+def apply_and_display(InStream, args):
+    InStream = apply_value(InStream, args)
+    InStream = display_result(InStream, args)
+    return InStream
+
+
+
+EnvProcessors = {
+    "num": {
+        "steps": [
+            validate_int_and_non_negative,
+            post_check_real_num_consistency,
+            apply_and_display,
+        ]
+    },
+    "real": {
+        "steps": [
+            validate_int_and_non_negative,
+            post_check_real_num_consistency,
+            apply_and_display
+        ]
+    },
+    "map": {
+        "steps": [
+            validate_int_and_non_negative,
+            validate_map_range,
+            apply_and_display
+        ]
+    },
+    "initHP": {
+        "steps": [validate_int_and_non_negative, apply_and_display]
+    },
+    "shot_distance": {
+        "steps": [validate_int_and_non_negative, apply_and_display]
+    },
+    "wave_distance": {
+        "steps": [validate_int_and_non_negative, apply_and_display]
+    },
+    "team_size": {
+        "steps": [
+            validate_int_and_non_negative,
+            validate_team_size,
+            apply_and_display
+        ]
+    },
+    "assist_team": {
+        "steps": [validate_int_and_non_negative, apply_and_display]
+    },
+}
+
+
 def Setting():
-    """Handles the game settings configuration screen."""
-    global InitBattleEnv # Declare intent to modify the global settings dictionary.
+    """A function where player can modify the BattleEnv"""
+    global InitBattleEnv
+
+    # Temp core for StreamProcessor.We don't need a full core
+    class SettingCore:
+        def __init__(self):
+            self.BattleEnv = InitBattleEnv
+
+    core = SettingCore()
 
     ArkUI.typing_delay = 0.001
-    ArkUI.workdir = "/ark/setting/" # Switch UI working directory for easier path management.
+    ArkUI.workdir = "/ark/setting/"
     ArkUI.out("./title")
     ArkUI.out("./intro")
 
     while True:
         ArkUI.out("./current")
-        # Display the current settings in a formatted table.
+
+        # 显示当前设置
         display_data = []
         for num, key in InitBattleEnv["setting_options"].items():
             display_data.append((num, ArkUI.get(f"./desc/{key}"), InitBattleEnv[key]))
@@ -845,7 +1055,7 @@ def Setting():
         choice = ArkUI.inp("./prompt")
         ArkUI.out("/share/endl")
 
-        if choice == "": # Player pressed Enter, meaning exit.
+        if choice == "":
             ArkUI.out("./exit")
             ArkUI.out("/share/endl")
             break
@@ -858,54 +1068,76 @@ def Setting():
             new_value_str = ArkUI.inp("./input-new", imp=[current_value])
             ArkUI.out("/share/endl")
 
-            if new_value_str == "": # Player pressed Enter, keep the old value.
+            if new_value_str == "":
+                # 保持原值
                 ArkUI.out("./updated", imp=[setting_name, current_value])
                 ArkUI.out("/share/endl")
                 continue
 
+            # ===== Use StreamProcessor to deal the modify =====
+            InStream = {
+                "key": setting_key,
+                "value": new_value_str,
+                "old_value": current_value,
+                "error": None,
+                "success": False,
+                "warning": None,
+            }
+
+            # Get the processing stream
+            if setting_key in EnvProcessors:
+                steps = EnvProcessors[setting_key]["steps"]
+            else:
+                # Default steam
+                steps = [
+                    validate_int,
+                    validate_non_negative,
+                    apply_value,
+                    display_result
+                ]
+
+            # Conduct the processing
             try:
-                new_value = int(new_value_str)
-
-                # General validation: non-negative.
-                if new_value < 0:
-                    ArkUI.out("./error-non-negative")
-                    continue
-
-                # Specific parameter validation.
-                if setting_key == "map" and new_value > 100: # Set a reasonable upper limit for map size.
-                    ArkUI.out("./error-map-range", imp=[new_value])
-                    continue
-
-                # Update parameter.
-                InitBattleEnv[setting_key] = new_value
-
-                # Cross-validation: human players cannot exceed total players.
-                if setting_key in ["num", "real"]:
-                    if InitBattleEnv["real"] > InitBattleEnv["num"]:
-                        ArkUI.out("./error-real-num-mismatch", imp=[InitBattleEnv["real"], InitBattleEnv["num"]])
-                        InitBattleEnv["real"] = InitBattleEnv["num"] # Auto-correct.
-                        ArkUI.out("/ark/setting/updated", imp=[setting_name, InitBattleEnv["real"]])
-                        ArkUI.out("/share/endl")
-
-                ArkUI.out("./updated", imp=[setting_name, InitBattleEnv[setting_key]])
-
-            except ValueError:
-                ArkUI.out("./error-not-int")
+                OutStream = noah.StreamProcessor(
+                    InStream=InStream,
+                    steps=steps,
+                    args=(core, ArkUI)
+                )
             except Exception as e:
-                # Catch other potential errors gracefully.
                 ArkUI.out(f"An unexpected error occurred: {e}", dr=True)
-            finally:
-                ArkUI.out("/share/endl") # Add a blank line for readability.
+
+            ArkUI.out("/share/endl")
 
         else:
             ArkUI.out("./error-invalid-choice")
             ArkUI.out("/share/endl")
 
-    ArkUI.workdir = "/ark/" # Restore the UI's working directory.
+    ArkUI.workdir = "/ark/"
+
+
+
+def build_snapshot_status(core):
+    """
+    Builds a snapshot of all players' current state.
+
+    Returns:
+        dict: {"snap": {player_id: [HP, energy, place, team], ...}}
+    """
+    snap_status = {}
+    for pl in core.PlDict.values():
+        snap_status[pl.id] = [pl.HP, pl.energy, pl.place, pl.team]
+
+    return {"snap": snap_status}
+
+
 
 def Gaming():
     """This is the main game loop function."""
     core = noah.Core(InitBattleEnv, BaseActDict, noah.IO(ArkUI.exp))
+
+    # Add snapshot to the structure of core.status
+    core.status_components.append(build_snapshot_status)
+
     core.mk_pldict()
     core.ls_acts()
     core.update_status()
@@ -920,7 +1152,7 @@ def Gaming():
         core.ui.typing_delay = org_delay
 
         core.SelectAct()
-        if core._break:
+        if core.exit_game:
             core.ui.out(["/ark/break", "/share/endl"])
             break
 
@@ -983,6 +1215,9 @@ TransTable = {
 }
 
 if __name__ == "__main__":
+
+    exit_game = False
+
     while True: # The session loop (allows playing multiple games).
         # Display main menu options.
         optlist = ArkUI.get('./opt-title')
@@ -996,12 +1231,12 @@ if __name__ == "__main__":
         ArkUI.out("/share/endl")
 
         if res in TransTable['mode']:
-            _break = TransTable['mode'][res][1]()
+            exit_game = TransTable['mode'][res][1]()
         elif res == "": # Default action is to start the game.
-            _break = TransTable['mode']["1"][1]()
+            exit_game = TransTable['mode']["1"][1]()
         else:
             ArkUI.out("/share/not-found")
             ArkUI.out("/share/endl")
 
-        if _break:
+        if exit_game:
             break

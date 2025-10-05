@@ -333,12 +333,12 @@ class Player():
                 core.ui.workdir = f"/act/{selection}"
 
             # Execute the selection function (`s_exec`) of the chosen action.
-            _break, new_act = core.ActDict[selection]["s_exec"](self, core, auto)
+            quit_selecting, new_act = core.ActDict[selection]["s_exec"](self, core, auto)
 
             if new_act:
                 result.append(new_act)
 
-            if _break:
+            if quit_selecting:
                 break
 
         return result
@@ -503,6 +503,57 @@ def StreamProcessor(InStream, steps: list, args: tuple):
         OutStream = step_func(OutStream, args)
     return OutStream
 
+
+def build_population_status(core):
+    """
+    Builds population statistics required by the Noah Kernel.
+
+    Returns:
+        dict: {"pop": {place: {team: [ids], "sum": [ids]}, "all": total}}
+    """
+    pop_status = {}
+
+    for pl in core.PlDict.values():
+        if pl.place not in pop_status:
+            pop_status[pl.place] = {pl.team: [pl.id], "sum": [pl.id]}
+        elif pl.team not in pop_status[pl.place]:
+            pop_status[pl.place][pl.team] = [pl.id]
+            pop_status[pl.place]["sum"].append(pl.id)
+        else:
+            pop_status[pl.place][pl.team].append(pl.id)
+            pop_status[pl.place]["sum"].append(pl.id)
+
+    pop_status["all"] = len(core.PlDict)
+    return {"pop": pop_status}
+
+def build_energy_status(core):
+    """
+    Builds energy statistics for the Energy Battle game.
+    This is game-specific and not required by the Noah Kernel.
+
+    Returns:
+        dict: {"energy": {place: {team: total, "sum": total}, "all": total}}
+    """
+    energy_status = {}
+    all_energy = 0
+
+    for pl in core.PlDict.values():
+        if pl.place not in energy_status:
+            energy_status[pl.place] = {pl.team: pl.energy, "sum": pl.energy}
+        elif pl.team not in energy_status[pl.place]:
+            energy_status[pl.place][pl.team] = pl.energy
+            energy_status[pl.place]["sum"] = energy_status[pl.place].get("sum", 0) + pl.energy
+        else:
+            energy_status[pl.place][pl.team] += pl.energy
+            energy_status[pl.place]["sum"] += pl.energy
+
+        all_energy += pl.energy
+
+    energy_status["all"] = all_energy
+    return {"energy": energy_status}
+
+
+
 class Core():
     """
     The Core class encapsulates the main game state and logic.
@@ -544,7 +595,7 @@ class Core():
         # A dictionary holding cached statistics about the current game state,
         # used for quick lookups by AI and for displaying info.
         #
-        # Format:
+        # Build-In Format (you can change it by modifying Core.status_components):
         # "pop": {
         #     place: {team: [player_ids], "sum": [all_ids_at_place]},
         #     "all": total_population
@@ -552,18 +603,21 @@ class Core():
         # "energy": {
         #     place: {team: total_energy, "sum": total_energy_at_place},
         #     "all": total_energy_in_game
-        # },
-        # "snap": {
-        #     player_id: [HP, energy, place, team], ...
         # }
         self.status = {}
+        self.status_components = [
+            # Required by Noah for AI decision-making
+            build_population_status,
+            # Required by Noah for state queries
+            build_energy_status,
+        ]
 
         # A temporary dictionary to hold stream data for each channel during the dealing phase.
         self.channels = {}
 
         self.deaths = [] # List of player IDs who died this turn.
         self.ui = ui
-        self._break = False # A flag to signal the end of the game loop.
+        self.exit_game = False # A flag to signal the end of the game loop.
 
     def mk_pldict(self):
         """Creates the `self.PlDict` (player dictionary) based on `self.BattleEnv` settings."""
@@ -592,39 +646,25 @@ class Core():
             self.PlDict[i + 1] = pl
 
     def update_status(self):
-        """Updates the cached game state statistics in `self.status`."""
-        self.status = {"pop": {}, "energy": {}, "snap": {}}
+        """
+        Updates the cached game state statistics in `self.status`.
 
-        # First pass for population and snapshot data.
-        for pl in self.PlDict.values():
-            # Update population by place and team.
-            if pl.place not in self.status["pop"]:
-                self.status["pop"][pl.place] = {pl.team: [pl.id], "sum": [pl.id]}
-            elif pl.team not in self.status["pop"][pl.place]:
-                self.status["pop"][pl.place][pl.team] = [pl.id]
-                self.status["pop"][pl.place]["sum"].append(pl.id)
-            else:
-                self.status["pop"][pl.place][pl.team].append(pl.id)
-                self.status["pop"][pl.place]["sum"].append(pl.id)
+        This method now uses a modular component system. Each function in
+        `self.status_components` is called and returns a dictionary fragment,
+        which is merged into the final `self.status`.
 
-            # Create a snapshot of the player's state.
-            self.status["snap"][pl.id] = [pl.HP, pl.energy, pl.place, pl.team]
+        This design allows:
+        - Noah to provide essential status paths
+        - Games to add custom status paths (e.g., snapshot)
+        - Easy extension without modifying core Noah code
+        """
+        self.status = {}
 
-        # Second pass for energy data, requires all players to be iterated first.
-        all_energy = 0
-        for pl in self.PlDict.values():
-            if pl.place not in self.status["energy"]:
-                self.status["energy"][pl.place] = {pl.team: pl.energy, "sum": pl.energy}
-            elif pl.team not in self.status["energy"][pl.place]:
-                self.status["energy"][pl.place][pl.team] = pl.energy
-                self.status["energy"][pl.place]["sum"] = self.status["energy"][pl.place].get("sum", 0) + pl.energy
-            else:
-                self.status["energy"][pl.place][pl.team] += pl.energy
-                self.status["energy"][pl.place]["sum"] += pl.energy
-            all_energy += pl.energy
+        for component_func in self.status_components:
+            component_result = component_func(self)
+            # Merge the component's result into the main status dict
+            self.status.update(component_result)
 
-        self.status["pop"]["all"] = len(self.PlDict)
-        self.status["energy"]["all"] = all_energy
 
     def SelectAct(self):
         """
