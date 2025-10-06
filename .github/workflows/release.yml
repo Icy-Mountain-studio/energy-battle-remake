@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            upx --best --lzma dist/energy_battle_remake.exe
+            echo "⚠️ Skipping UPX compression on Windows (GUARD_CF not supported)"
           else
             upx --best --lzma dist/energy_battle_remake
           fi
