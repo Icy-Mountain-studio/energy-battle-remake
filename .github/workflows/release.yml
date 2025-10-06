@@ -3,11 +3,15 @@ name: Build and Release
 on:
   push:
     tags:
-      - "v*"   # 只有 push tag 才触发，例如 v1.0.0
+      - 'v*'
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -15,62 +19,75 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: '3.11'
 
-      - name: Install PyInstaller
-        run: pip install pyinstaller
+      - name: Install build tools
+        run: |
+          pip install --upgrade pip
+          pip install pyinstaller upx
 
-      - name: Build Windows exe
-        run: pyinstaller --onefile --console ark.py
+      - name: Build executable
+        shell: bash
+        run: |
+          pyinstaller main.py \
+            --onefile \
+            --clean \
+            --name energy-battle-remake \
+            --strip \
+            --exclude-module tkinter \
+            --exclude-module test \
+            --exclude-module asyncio \
+            --exclude-module email \
+            --exclude-module http \
+            --exclude-module xml \
+            --exclude-module html \
+            --exclude-module pydoc_data \
+            --exclude-module distutils \
+            --exclude-module wsgiref
 
-      - name: Upload Windows binary
+      - name: Compress with UPX
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            upx --best --lzma dist/energy_battle_remake.exe
+          else
+            upx --best --lzma dist/energy_battle_remake
+          fi
+
+      - name: Rename artifacts
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            mv dist/energy-battle-remake.exe energy_battle_remake.exe
+          else
+            mv dist/energy-battle-remake energy_battle_remake-linux
+          fi
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: windows-binary
-          path: dist/*
-
-  linux:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: Install PyInstaller
-        run: pip install pyinstaller
-
-      - name: Build Linux binary
-        run: pyinstaller --onefile --console ark.py
-
-      - name: Upload Linux binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: linux-binary
-          path: dist/*
+          name: binaries-${{ matrix.os }}
+          path: |
+            energy_battle_remake.exe
+            energy_battle_remake-linux
 
   release:
-    needs: [windows, linux]
+    needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
-      - name: Download Windows artifact
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-binary
-          path: ./artifacts/windows
+          path: artifacts
 
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-binary
-          path: ./artifacts/linux
-
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./artifacts/**/*
+          files: |
+            artifacts/**/energy_battle_remake.exe
+            artifacts/**/energy_battle_remake-linux
         env:
           GITHUB_TOKEN: ${{ secrets.JERRY }}
