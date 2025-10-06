@@ -37,11 +37,19 @@ jobs:
       - name: Build executable
         shell: bash
         run: |
+          if [ "${{ matrix.os }}" == "windows-latest" ]; then
+            UPX_ARG=""
+          else
+            UPX_ARG="--upx-dir /usr/bin"
+          fi
+
           pyinstaller ark.py \
             --onefile \
             --clean \
             --name energy_battle_remake-1.2.6 \
             --strip \
+            --optimize 2 \
+            $UPX_ARG \
             --exclude-module tkinter \
             --exclude-module test \
             --exclude-module asyncio \
@@ -51,16 +59,17 @@ jobs:
             --exclude-module html \
             --exclude-module pydoc_data \
             --exclude-module distutils \
-            --exclude-module wsgiref
-
-      - name: Compress with UPX
-        shell: bash
-        run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            echo "⚠️ Skipping UPX compression on Windows (GUARD_CF not supported)"
-          else
-            upx --best --lzma dist/energy_battle_remake-1.2.6
-          fi
+            --exclude-module wsgiref \
+            --exclude-module unittest \
+            --exclude-module difflib \
+            --exclude-module inspect \
+            --exclude-module doctest \
+            --exclude-module multiprocessing \
+            --exclude-module concurrent \
+            --exclude-module ctypes \
+            --exclude-module sqlite3 \
+            --exclude-module ssl \
+            --exclude-module socket
 
       - name: Rename artifacts
         shell: bash
