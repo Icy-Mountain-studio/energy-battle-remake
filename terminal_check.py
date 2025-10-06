@@ -69,6 +69,8 @@ def quick_color_test():
     print(f"{C['RED']}Red {C['GREEN']}Green {C['YELLOW']}Yellow {C['CYAN']}Cyan {C['MAGENTA']}Magenta{C['RESET']}")
     print("These should be different colors\n")
 
+
+
 if __name__ == "__main__":
     if show_check_result():
         print("Running color test:")

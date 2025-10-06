@@ -6,7 +6,7 @@ We need a frontend as elegant as the Noah backend: ark.py
 I hereby name it the Ark Frontend!
 
 Together, they create:
-Energy Battle - Remake v1.2-5
+Energy Battle - Remake v1.2-6
 
 This is a turn-based, many-vs-many combat game with a command-line interface.
 
@@ -19,7 +19,7 @@ which I call the "Noah Kernel".
 As you can see, the project is still far from complete.
 
 Project initiated: 2025.8.2
-Last updated: 2025.10.2
+Last updated: 2025.10.6
 """
 
 import noah  # Import the Noah kernel, with all due ceremony.
@@ -53,7 +53,7 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
     #    This makes the input handling very flexible.
     #    Example: {'1': 'en_us', 'en_us': 'en_us', '2': 'zh_cn', 'zh_cn': 'zh_cn'}
     options_map = {}
-    prompt_lines = ["Please select a language:"]
+    prompt_lines = [f"{C['YELLOW']}Please select a language{C['RESET']}"]
     for i, lang_code in enumerate(available_langs):
         # Map the option number (as a string) to the language code.
         option_num = str(i + 1)
@@ -63,13 +63,14 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 
         # Create a user-friendly display name for the prompt.
         # Here we make a simple assumption for the display name.
-        # You could add a 'display_name' field to your Expression dict for a fancier version.
-        display_name = lang_code.replace('_', '-')
-        prompt_lines.append(f"  {option_num}. {display_name}")
+
+        lang_name = expressions[lang_code]["/ark/lang_name"]
+        prompt_lines.append(f"  {C['YELLOW']}{option_num}. {lang_name}{C['RESET']} / {lang_code}")
 
     # 3. Construct the final prompt string.
     #    The default language is explicitly mentioned to guide the user.
-    prompt_lines.append(f"\n[Press Enter for {default_lang}] > ")
+    default_lang_name = expressions[default_lang]["/ark/lang_name"]
+    prompt_lines.append(f"\nPress Enter for {C['YELLOW']}{default_lang_name}{C['RESET']} > ")
     prompt = "\n".join(prompt_lines)
 
     # 4. Loop until a valid choice is made.
@@ -78,18 +79,19 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 
         # Handle the default case: user presses Enter.
         if not choice:
-            print(f"Defaulting to {default_lang}.")
+            print(f"Defaulting to {C['YELLOW']}{default_lang_name}{C['RESET']}.")
             return default_lang
 
         # Check if the input (e.g., '1' or 'zh_cn') is a valid option.
         if choice in options_map:
             selected_lang = options_map[choice]
-            print(f"Language set to: {selected_lang}\n")
+            selected_name = expressions[selected_lang]["/ark/lang_name"]
+            print(f"Language set to: {C['YELLOW']}{selected_name}{C['RESET']}\n")
             return selected_lang
 
         # Handle invalid input and re-prompt.
         else:
-            print("\nInvalid selection. Please try again.")
+            print(f"\n{C['RED']}Invalid selection. Please try again.{C['RESET']}\n")
 
 
 
@@ -129,7 +131,15 @@ def charge_d(InStream, args):
     """Resolution logic for the 'Charge' action."""
     act, core = args
     act.pay(core)
+    pl = core.PlDict[act.ownerID]
+
+    if pl.real:
+        core.ui.typing_delay = core.org_delay*1.5
     core.ui.out("./dealed", imp=[act.ownerID, core.PlDict[act.ownerID].energy])
+    if pl.real:
+        core.ui.typing_delay = 0
+        noah.time.sleep(0.3)
+
     return None
 
 def get_seth(place1, place2):
@@ -249,18 +259,18 @@ def shot_s(pl, core, auto):
 
     else: # --- AI Logic ---
         # 1. Efficiently find a target from the pre-calculated status cache.
-        shot_able = []
+        shotable = []
         for i in range(s.place - 1, s.place + 2):
             if i in core.status["pop"]:
-                shot_able += core.status["pop"][i]["sum"]
+                shotable += core.status["pop"][i]["sum"]
 
         target = pl.id
         _tg = core.status["snap"][target]
         # Ensure the AI doesn't target itself or a teammate.
         while _tg[3] == pl.team and ((not pl.real) or target==pl.id):
-            target = noah.random.choice(shot_able)
+            target = noah.random.choice(shotable)
             _tg = core.status["snap"][target]
-            shot_able.remove(target)
+            shotable.remove(target)
 
         act = noah.Act(s.id, "2")
         act.lv = 3
@@ -268,10 +278,14 @@ def shot_s(pl, core, auto):
         # Calculate the maximum affordable firepower.
         while core.ActDict["2"]["price"](act) > s.energy:
             act.lv -= 1
+            if act.lv < 1:
+                core.ui.out(f"[shot_s] ERROR: shot_price might wemt wrong (in P{pl.id}'s selection)", mode="l", dr=True)
+                break
 
         # Defensive programming: ensure AI doesn't shoot with 0 energy,
         # even though the 'able' function should prevent this.
         if act.lv <= 0:
+            core.ui.out(f"[shot_s] ERROR: Player {pl.id} could not afford shotting but selected it automatically", mode="l", dr=True)
             return (False, None)
 
         act.target = int(target)
@@ -322,7 +336,7 @@ def crossfire_evaluate(InStream, args):
     act, core = args
     myself = core.PlDict[act.ownerID]
     if myself.real:
-        core.ui.typing_delay = core.org_delay*5
+        core.ui.typing_delay = core.org_delay*3
 
     # This function initiates the data stream for a crossfire action.
     InStream = {"msg": [], "damage": {}}
@@ -389,7 +403,7 @@ def crossfire_reflect(InStream, args):
 
     someone_reflected = False
     for playerID in InStream["damage"].keys():
-        if core.PlDict[playerID].defend_lv == -1 and attacker.defend_lv != -1: # -1 signifies Reflect
+        if "reflect" in core.PlDict[playerID].status and "reflect" not in attacker.status:
             InStream["msg"].append(["./reflect", [act.ownerID, InStream["damage"][playerID]]])
             if InStream["damage"][playerID] > 0:
                 InStream["damage"][playerID] *= -1 # Negative damage means it's reflected back
@@ -406,7 +420,7 @@ def crossfire_defend(InStream, args):
     act, core = args
     someone_defend = False
     for playerID in InStream["damage"].keys():
-        if core.PlDict[playerID].defend_lv == 1: # 1 signifies Defend
+        if "defend" in core.PlDict[playerID].status:
             InStream["msg"].append(["./defend", [playerID, InStream["damage"][playerID]]])
             if InStream["damage"][playerID] > 0:
                 InStream["damage"][playerID] = 0 # Nullify damage
@@ -457,8 +471,15 @@ def defend_d(InStream, args):
     """Resolution logic for the 'Defend' action."""
     act, core = args
     act.pay(core)
-    core.PlDict[act.ownerID].defend_lv = 1
+    pl = core.PlDict[act.ownerID]
+    pl.status["defend"] = True
+
+    if pl.real:
+        core.ui.typing_delay = core.org_delay*1.5
     core.ui.out("./dealed", imp=[act.ownerID])
+    if pl.real:
+        core.ui.typing_delay = 0
+        noah.time.sleep(0.3)
     return None
 
 def move_s(pl, core, auto):
@@ -498,9 +519,9 @@ def move_s(pl, core, auto):
 def blackhole_s(pl, core, auto):
     """Selection logic for the 'Black Hole' action."""
     act = noah.Act(pl.id, "7")
-    if not auto: # Human Logic
-        core.ui.indent += 1
-        if pl.energy >= core.ActDict["7"]["price"](act):
+    if pl.energy >= core.ActDict["7"]["price"](act):
+        if not auto: # Human Logic
+            core.ui.indent += 1
             while True:
                 inp_target = core.ui.inp("./ask")
                 try:
@@ -517,26 +538,33 @@ def blackhole_s(pl, core, auto):
             core.ui.out("/share/endl")
             core.ui.indent -= 1
             return (True, act)
-        else:
-            core.ui.out("/share/poor", color='MAGENTA')
-            core.ui.indent -= 1
-            return (False, None)
 
-    else: # AI Logic
-        available_targets = []
-        for i in core.status["pop"].keys():
-            if i != "all":
-                available_targets += core.status["pop"][i]["sum"]
+        else: # AI Logic
+            available_targets = []
+            for i in core.status["pop"].keys():
+                if i != "all":
+                    available_targets += core.status["pop"][i]["sum"]
 
-        target = pl.id
-        _tg = core.status["snap"][target]
-        while _tg[3] == pl.team and ((not pl.real) or target == pl.id):
-            available_targets.remove(target)
-            target = noah.random.choice(available_targets)
+            target = pl.id
             _tg = core.status["snap"][target]
+            while _tg[3] == pl.team and ((not pl.real) or target == pl.id):
+                available_targets.remove(target)
+                target = noah.random.choice(available_targets)
+                _tg = core.status["snap"][target]
 
-        act.target = target
-        return (True, act)
+            act.target = target
+            return (True, act)
+
+    elif not auto:
+        core.ui.indent += 1
+        core.ui.out("/share/poor", color='MAGENTA')
+        core.ui.indent -= 1
+        return (False, None)
+
+    else:
+        core.ui.out(f"[wave_s] ERROR: Player {pl.id} can't afford blackhole but selected it", mode="l", dr=True)
+        return (False, None)
+
 
 def blackhole_d(InStream, args):
     """Resolution logic for 'Black Hole'."""
@@ -561,18 +589,30 @@ def blackhole_d(InStream, args):
 
     if target.real or myself.real:
         core.ui.typing_delay = 0
-        noah.time.sleep(0.5)
+        noah.time.sleep(0.3)
 
     return None
+
 
 def move_d(InStream, args):
     """Resolution logic for the 'Move' action."""
     act, core = args
     act.pay(core)
     st = act.steps
-    core.PlDict[act.ownerID].place += st  # Perform the move.
-    core.ui.out("./dealed", imp=[act.ownerID, st, core.PlDict[act.ownerID].place])
+    pl = core.PlDict[act.ownerID]
+    pl.place += st  # Perform the move.
+
+    if abs(pl.place) > core.BattleEnv["map"]:
+        core.ui.out(f"[move_d] ERROR: Player {pl.id} is out of map, in place {pl.place}", mode="l", dr=True)
+
+    if pl.real:
+        core.ui.typing_delay = core.org_delay*1.5
+    core.ui.out("./dealed", imp=[act.ownerID, st, pl.place])
+    if pl.real:
+        core.ui.typing_delay = 0
+        noah.time.sleep(0.3)
     return None
+
 
 def auto_AOEseth(pl, core):
     """
@@ -603,11 +643,14 @@ def wave_s(pl, core, auto):
             core.ui.indent += 1
             core.ui.out(["/share/poor", "/share/endl"], color='MAGENTA')
             core.ui.indent -= 1
+        else:
+            core.ui.out(f"[wave_s] ERROR: Player {pl.id} can't afford wave but selected it", mode="l", dr=True)
         return (False, None)
+
     elif not auto: # Human Logic
         core.ui.indent += 1
         while True:
-            seth = core.ui.inp('./ask-seth', indent=1)
+            seth = core.ui.inp('./ask-seth')
             if seth == " ": # Cancel option
                 core.ui.out(["./cancel", "/share/endl"])
                 core.ui.indent -= 1
@@ -615,15 +658,15 @@ def wave_s(pl, core, auto):
             try:
                 if seth != "":
                     if int(seth) not in [-1, 0, 1]:
-                        core.ui.out("./error-no-seth", indent=1)
+                        core.ui.out("./error-no-seth")
                         continue
                 else: # Auto-calculate direction
                     seth = auto_AOEseth(pl, core)
-                    core.ui.out("./auto-seth", imp=[seth], indent=1)
+                    core.ui.out("./auto-seth", imp=[seth])
             except ValueError:
-                core.ui.out("./error-int-or-empty", indent=1)
+                core.ui.out("./error-int-or-empty")
                 continue
-            core.ui.out('/share/endl', indent=1)
+            core.ui.out('/share/endl')
             break
 
         act.seth = int(seth)
@@ -648,10 +691,11 @@ def wave_s(pl, core, auto):
 
 def charge_price(act): return -1
 def shot_price(act): return act.lv
-def reflect_price(act): return 2
-def blackhole_price(act): return 5
+def reflect_price(act): return 1
+def blackhole_price(act): return 3
 def wave_price(act): return 4
 def free_of_charge(act): return 0
+
 
 def able_forever(context):
     """Ability check for actions that are always available."""
@@ -667,7 +711,7 @@ def move_able(context):
 
 def blackhole_able(context):
     """Ability check for 'Black Hole'."""
-    return (context["self"].energy >= 5)
+    return (context["self"].energy >= 3)
 
 def reflect_able(context):
     """Ability check for 'Reflect'."""
@@ -683,27 +727,27 @@ def charge_ai(context):
 
 def shot_ai(context):
     """AI weight for 'Shoot'."""
-    return context["self"].energy*100
+    return context["self"].energy*50
 
 def defend_ai(context):
     """AI weight for 'Defend'."""
-    return context["engK"]*100+10
+    return context["engK"]*context["engK"]*100+10
 
 def move_ai(context):
     """AI weight for 'Move'."""
-    return context["enmK"]*100+10
+    return context["enmK"]*context["engK"]*50+10
 
 def blackhole_ai(context):
     """AI weight for 'Black Hole'."""
-    return context["self"].energy * 3000
+    return context["self"].energy*40
 
 def reflect_ai(context):
     """AI weight for 'Reflect'."""
-    return context["engK"]*20+10
+    return context["engK"]*30+10
 
 def wave_ai(context):
     """AI weight for 'Energy Wave'."""
-    return context["self"].energy*1000
+    return context["self"].energy*100
 
 def reflect_s(pl, core, auto):
     """Selection logic for 'Reflect'."""
@@ -721,8 +765,14 @@ def reflect_d(InStream, args):
     """Resolution logic for 'Reflect'."""
     act, core = args
     act.pay(core)
-    core.PlDict[act.ownerID].defend_lv = -1 # -1 signifies reflect status
+    pl = core.PlDict[act.ownerID]
+    pl.status["reflect"] = True # reflect status
+    if pl.real:
+        core.ui.typing_delay = core.org_delay*1.5
     core.ui.out("./dealed", imp=[act.ownerID])
+    if pl.real:
+        core.ui.typing_delay = 0
+        noah.time.sleep(0.3)
 
 def ShowRules_s(pl, core, auto):
     """Selection logic for 'ShowRules' (human-only utility action)."""
@@ -781,7 +831,7 @@ except ImportError:
 # ArkUI is the UI instance managed by the frontend, distinct from core.ui.
 # You can select a language here
 chosen_lang_code = select_language(Expression)
-noah.time.sleep(0.5)
+noah.time.sleep(0.3)
 noah.clear_screen()
 
 chosen_lang = Expression[chosen_lang_code]
@@ -1130,10 +1180,16 @@ def build_snapshot_status(core):
     return {"snap": snap_status}
 
 
+if not noah.os.path.exists("./logs"):
+    noah.os.mkdir("logs")
+
 
 def Gaming():
     """This is the main game loop function."""
-    core = noah.Core(InitBattleEnv, BaseActDict, noah.IO(ArkUI.exp))
+    timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
+    core = noah.Core(InitBattleEnv, BaseActDict, noah.IO(ArkUI.exp, logpath=f"./logs/noah_{timest}.gz"))
+
+    core.ui.out(core.battle_env_snapshot(), mode="l", dr=True)
 
     # Add snapshot to the structure of core.status
     core.status_components.append(build_snapshot_status)
@@ -1143,6 +1199,7 @@ def Gaming():
     core.update_status()
 
     while True:  # The main turn-based loop.
+        core.ui.write_log()
         core.clean_round()
         core.rounds += 1
 
@@ -1195,8 +1252,11 @@ def Gaming():
             else:
                 core.ui.out("/ark/game-over-nobody")
                 break
+            core.ui.typing_delay /= 7
 
         core.ui.out("/share/endl")
+
+    core.ui.write_log()
 
 
 def _exit():

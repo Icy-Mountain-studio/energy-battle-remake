@@ -3,10 +3,10 @@ The Noah Kernel: A turn-based game engine.
 Originally spun off from the development of the game 'Energy Battle'.
 
 Project initiated: 2025.8.2
-Last updated: 2025.10.2
+Last updated: 2025.10.6
 """
 
-import random, re, os, time, sys
+import random, re, os, time, sys, gzip
 
 # A common trick to enable ANSI escape code support on Windows terminals.
 os.system("")
@@ -49,7 +49,7 @@ C = {
 class IO():
     """Defines an IO class for managing input, output, and logging."""
 
-    def __init__(self, exp={}, logpath="log", delay=0.01):
+    def __init__(self, exp={}, logpath="noah-log.gz", delay=0.01):
         """
         Initializes the IO manager.
 
@@ -102,32 +102,44 @@ class IO():
 
             # Evaluate the final string to be printed.
             if dr:
-                res = explain(key, imp)
+                res_org = explain(key, imp)
             else:
                 # Resolve path and get the expression template.
-                res = explain(self.exp[self.dealpath(key)], imp)
+                res_org = explain(self.exp[self.dealpath(key)], imp)
 
-            if res != "NONE":
-                _res = plus + res  # Result with indentation for logging/history.
+            if res_org != "NONE":
+                indented_res = plus + res_org  # Result with indentation for logging/history.
+                full_format_res = indented_res
+                colored_res = res_org
 
                 if color:
-                    res = self.colors.get(color, "") + res + self.colors["RESET"]
-                    _res = self.colors.get(color, "") + _res + self.colors["RESET"]
+                    full_format_res = self.colors.get(color, "") + indented_res + self.colors["RESET"]
+                    colored_res = self.colors.get(color, "") + res_org + self.colors["RESET"]
 
                 # Output to the specified channels.
                 if "s" in mode:
                     if plus:
                         print(plus, end="")
                     if self.typing_delay > 0:
-                        self._typewriter_print(res)
+                        self._typewriter_print(colored_res)
                         print(end=real_end)
                     else:
-                        print(res, end=real_end)
+                        print(colored_res, end=real_end)
 
                 if "h" in mode:
-                    self.history.append(_res)
+                    self.history.append(full_format_res)
                 if "l" in mode:
-                    self.logs.append(_res)
+                    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                    self.logs.append(f"{timestamp}\n{res_org}\n")
+
+
+    def write_log(self):
+        with gzip.open(self.logpath, 'ab') as f:
+            # need to encode the string
+            f.write(("\n".join(self.logs) + '\n').encode('utf-8'))
+
+        self.logs.clear()
+
 
     def inp(self, key, mode="sh", dr=False, imp=[], indent=True, color=None):
         """
@@ -176,6 +188,25 @@ class IO():
             sys.stdout.write(char)
             sys.stdout.flush()
             time.sleep(self.typing_delay)
+
+    def _typewriter_print(self, text: str):
+        """Prints text character by character with a typewriter effect,
+        skipping ANSI escape codes."""
+        ansi_pattern = re.compile(r'\033\[[0-9;]*m')
+
+        i = 0
+        while i < len(text):
+            match = ansi_pattern.match(text, i)
+            if match:
+                sys.stdout.write(match.group())
+                sys.stdout.flush()
+                i = match.end()
+            else:
+                sys.stdout.write(text[i])
+                sys.stdout.flush()
+                time.sleep(self.typing_delay)
+                i += 1
+
 
 def explain(template_str: str, values: list) -> str:
     """
@@ -237,8 +268,7 @@ def decide(able_actions: list, weights: list, real: bool):
             chosen_action = random.choices(population=able_actions, weights=weights, k=1)[0]
         except ValueError:
             # This can happen if weights are invalid (e.g., all zero).
-            print(f"Warning: Invalid weights for actions. Actions: {able_actions}, Weights: {weights}")
-            return None
+            return False
     else:
         # Human player: suggest the action with the highest weight.
         chosen_action = able_actions[weights.index(max(weights))]
@@ -273,13 +303,12 @@ class Player():
         self.HPlog = []        # Log of HP changes: [[damage, source_id, action_name], ...].
         self.kills = []        # List of player IDs killed by this player.
 
+        # Status varibles that resets every turn.For example, defend for one turn.
+        self.status = {}
+
         # The ID of the AI team this player belongs to.
         # 0 is reserved for human players or AI allied with humans.
         self.team = 0
-
-        # Player's defense level for the current turn. Resets every turn.
-        # The kernel defines 1 as standard defense and -1 as damage reflection.
-        self.defend_lv = 0
 
         # A list of selected actions and their parameters for the current turn. Cleared each turn.
         # Format: [[action_key<str>, action_sign_index<int>], ...]
@@ -304,6 +333,7 @@ class Player():
             if self.real:
                 # Prompt human player for input.
                 prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name")]
+
                 selection = core.ui.inp('/core/ask-for-act', imp=prompt_imp)
 
                 if selection == "":
@@ -311,9 +341,10 @@ class Player():
                     selection = decision
                     auto = True
                     # Slow down typing to make it clear the choice was automated.
-                    core.ui.typing_delay *= 7
+                    core.ui.typing_delay *= 3
                     core.ui.out('/core/selected', imp=[core.ui.get(f"/act/{selection}/name")])
-                    core.ui.typing_delay /= 7
+                    core.ui.typing_delay /= 3
+                    time.sleep(0.5)
 
                 if selection not in core.ActDict:
                     core.ui.out(['/share/not-found', '/share/endl'], color="RED")
@@ -337,8 +368,15 @@ class Player():
 
             if new_act:
                 result.append(new_act)
+            elif not self.real:
+                core.ui.out(f"[Player.select] ERROR: AI Player {self.id} didn't get any act object from selected act {selection}", mode="l", dr=True)
+                core.ui.write_log()
 
             if quit_selecting:
+                break
+            elif not self.real:
+                core.ui.out(f"[Player.select] ERROR: Act {selection} let P{self.id}(AI) go into selection loop", mode="l", dr=True)
+                core.ui.write_log()
                 break
 
         return result
@@ -462,6 +500,8 @@ class Act():
             cost = core.ActDict[self.key]["price"](self)
             core.PlDict[self.ownerID].energy -= cost
             self.payed = True
+            if core.PlDict[self.ownerID].energy < 0:
+                core.ui.out(f"[Act.pay] ERROR: P{self.ownerID} can't afford act {self.key}", mode="l", dr=True)
 
 def SelectAct_WorkerFunc(task):
     """
@@ -479,6 +519,8 @@ def SelectAct_WorkerFunc(task):
     decision_key = decide(able_actions, ai_weights, player.real)
     if decision_key is None:
         return [[], [player.id]]
+    elif decision_key is False:
+        core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", dr=True)
     else:
         result_acts.extend(player.select(core, decision_key))
 
@@ -673,6 +715,7 @@ class Core():
         Note: A previous attempt at multithreading this showed minimal performance gains
         for cheap tasks, so a simpler sequential approach is used.
         """
+
         human_players = [pl for pl in self.PlDict.values() if pl.real]
         ai_players = [pl for pl in self.PlDict.values() if not pl.real]
 
@@ -731,6 +774,9 @@ class Core():
             self.ui.out("/core/no-available-act", imp=[player_ids_str], color="RED")
 
     def DealAct(self):
+
+        self.ui.out(self.debug_snapshot(), mode="l", dr=True)
+
         """Processes all selected actions for the round, in descending order of priority."""
         self.org_delay = self.ui.typing_delay
         self.ui.typing_delay = 0 # Disable typing delay for faster processing.
@@ -803,7 +849,7 @@ class Core():
         self.ActSign = {}
         for pl in self.PlDict.values():
             pl.acts = []
-            pl.defend_lv = 0
+            pl.status = {}
         self.deaths = []
         self.channels = {}
 
@@ -838,3 +884,40 @@ class Core():
         # Assuming `exp` is available in the global scope to re-initialize IO.
         # This might need adjustment based on the main script's structure.
         self.ui = IO(exp=self.ui.exp)
+
+    def debug_snapshot(self, title="Game State"):
+        msg = []
+        msg.append(f"{'='*60}")
+        msg.append(f"{title} - Round {self.rounds}")
+        msg.append(f"{'='*60}")
+
+        msg.append(f"Alive: {len(self.PlDict)} players")
+        for pid, pl in self.PlDict.items():
+            msg.append(f"\tP{pid}: HP={pl.HP} E={pl.energy} Pos={pl.place} Team={pl.team}")
+
+        if self.ActSign:
+            msg.append(f"\nPending Actions:")
+            for priority in sorted(self.ActSign.keys(), reverse=True):
+                for act_key, acts in self.ActSign[priority].items():
+                    msg.append(f"  Priority {priority} / ActCode {act_key}: {len(acts)} actions")
+
+        msg.append(f"{'='*60}")
+
+        return "\n".join(msg)
+
+
+    def battle_env_snapshot(self, title="Battle Environment"):
+        msg = []
+        msg.append(f"{'='*60}")
+        msg.append(f"{title}s")
+        msg.append(f"{'='*60}")
+
+        for env_key, env_value in self.BattleEnv.items():
+            msg.append(f"\t{env_key} -> {env_value}")
+
+        msg.append(f"{'='*60}")
+
+        return "\n".join(msg)
+
+
+
