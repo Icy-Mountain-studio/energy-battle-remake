@@ -19,20 +19,28 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
-      - name: Install build tools
+      - name: Install dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
-          pip install pyinstaller upx
+          pip install "pyinstaller>=6.0"
+
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            sudo apt-get update
+            sudo apt-get install -y upx
+          else
+            choco install upx -y
+          fi
 
       - name: Build executable
         shell: bash
         run: |
-          pyinstaller main.py \
+          pyinstaller ark.py \
             --onefile \
             --clean \
-            --name energy-battle-remake \
+            --name energy_battle_remake \
             --strip \
             --exclude-module tkinter \
             --exclude-module test \
@@ -58,9 +66,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            mv dist/energy-battle-remake.exe energy_battle_remake.exe
+            mv dist/energy_battle_remake.exe energy_battle_remake-windows.exe
           else
-            mv dist/energy-battle-remake energy_battle_remake-linux
+            mv dist/energy_battle_remake energy_battle_remake-linux
           fi
 
       - name: Upload artifacts
@@ -68,7 +76,7 @@ jobs:
         with:
           name: binaries-${{ matrix.os }}
           path: |
-            energy_battle_remake.exe
+            energy_battle_remake-windows.exe
             energy_battle_remake-linux
 
   release:
@@ -87,7 +95,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/**/energy_battle_remake.exe
+            artifacts/**/energy_battle_remake-windows.exe
             artifacts/**/energy_battle_remake-linux
         env:
-          GITHUB_TOKEN: ${{ secrets.JERRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
