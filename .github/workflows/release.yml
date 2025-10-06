@@ -40,7 +40,7 @@ jobs:
           pyinstaller ark.py \
             --onefile \
             --clean \
-            --name energy_battle_remake \
+            --name energy_battle_remake-1.2.6 \
             --strip \
             --exclude-module tkinter \
             --exclude-module test \
@@ -59,16 +59,16 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
             echo "⚠️ Skipping UPX compression on Windows (GUARD_CF not supported)"
           else
-            upx --best --lzma dist/energy_battle_remake
+            upx --best --lzma dist/energy_battle_remake-1.2.6
           fi
 
       - name: Rename artifacts
         shell: bash
         run: |
           if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            mv dist/energy_battle_remake.exe energy_battle_remake-windows.exe
+            mv dist/energy_battle_remake-1.2.6.exe energy_battle_remake-1.2.6-windows.exe
           else
-            mv dist/energy_battle_remake energy_battle_remake-linux
+            mv dist/energy_battle_remake-1.2.6 energy_battle_remake-1.2.6-linux
           fi
 
       - name: Upload artifacts
@@ -76,8 +76,8 @@ jobs:
         with:
           name: binaries-${{ matrix.os }}
           path: |
-            energy_battle_remake-windows.exe
-            energy_battle_remake-linux
+            energy_battle_remake-1.2.6-windows.exe
+            energy_battle_remake-1.2.6-linux
 
   release:
     needs: build
@@ -95,8 +95,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            artifacts/**/energy_battle_remake-windows.exe
-            artifacts/**/energy_battle_remake-linux
+            artifacts/**/energy_battle_remake-1.2.6-windows.exe
+            artifacts/**/energy_battle_remake-1.2.6-linux
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
