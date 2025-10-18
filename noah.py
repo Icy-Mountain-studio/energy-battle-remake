@@ -369,14 +369,12 @@ class Player():
             if new_act:
                 result.append(new_act)
             elif not self.real:
-                core.ui.out(f"[Player.select] ERROR: AI Player {self.id} didn't get any act object from selected act {selection}", mode="l", dr=True)
-                core.ui.write_log()
+                core.RaiseError("Player.select", f"AI Player {self.id} didn't get any act object from selected act {selection}")
 
             if quit_selecting:
                 break
             elif not self.real:
-                core.ui.out(f"[Player.select] ERROR: Act {selection} let P{self.id}(AI) go into selection loop", mode="l", dr=True)
-                core.ui.write_log()
+                core.RaiseError("Player.select", f"Act {selection} let P{self.id}(AI) go into selection loop")
                 break
 
         return result
@@ -472,20 +470,20 @@ class Act():
         self.acted = False      # Has this action been processed/dealt?
         self.ownerID = ownerID  # The ID of the player who initiated this action.
         self.key = key          # The key of this action in ActDict.
-        self.channel = channel  # The stream processing channel this action uses.
+        self.channel = channel  # The pipe processing channel this action uses.
         self.payed = False      # Has the energy cost for this action been paid?
 
     def deal(self, core):
         """
         Processes or 'settles' this action.
-        It adds the action's execution logic to the appropriate stream processor.
+        It adds the action's execution logic to the appropriate PipeWorkFlow.
         """
         if not self.acted:
             core.ui.workdir = f"/act/{self.key}"
 
             # The action's execution logic is added as a new step in its designated channel's stream.
-            core.channels[self.channel] = StreamProcessor(
-                InStream=core.channels.get(self.channel, None),
+            core.channels[self.channel] = PipeWorkFlow(
+                PipeData=core.channels.get(self.channel, None),
                 steps=core.ActDict[self.key]["d_exec"],
                 args=(self, core)
             )
@@ -501,7 +499,7 @@ class Act():
             core.PlDict[self.ownerID].energy -= cost
             self.payed = True
             if core.PlDict[self.ownerID].energy < 0:
-                core.ui.out(f"[Act.pay] ERROR: P{self.ownerID} can't afford act {self.key}", mode="l", dr=True)
+                core.RaiseError("Act.pay", f"Player {self.ownerID} can't afford act {self.key}")
 
 def SelectAct_WorkerFunc(task):
     """
@@ -526,33 +524,34 @@ def SelectAct_WorkerFunc(task):
 
     return [result_acts, []]
 
-def StreamProcessor(InStream, steps: list, args: tuple):
+def PipeWorkFlow(PipeData, steps: list, args: tuple):
     """
     Implements a stream processing pipeline architecture.
     It takes an input stream, passes it sequentially through a list of functions (`steps`),
     where the output of one step becomes the input for the next.
 
     Args:
-        InStream: The initial data/object to be processed.
+        PipeData: The initial data/object to be processed.
         steps (list of functions): The functions that make up the processing pipeline.
         args (tuple): Common arguments that are passed to every function in `steps`.
 
     Returns:
         The final result after the last processing step.
     """
-    OutStream = InStream
+    OutData = PipeData
     for step_func in steps:
-        OutStream = step_func(OutStream, args)
-    return OutStream
+        OutData = step_func(OutData, args)
+    return OutData
 
 
-def build_population_status(core):
+def build_population_status(PipeData, args):
     """
     Builds population statistics required by the Noah Kernel.
 
     Returns:
         dict: {"pop": {place: {team: [ids], "sum": [ids]}, "all": total}}
     """
+    core = args
     pop_status = {}
 
     for pl in core.PlDict.values():
@@ -566,9 +565,12 @@ def build_population_status(core):
             pop_status[pl.place]["sum"].append(pl.id)
 
     pop_status["all"] = len(core.PlDict)
-    return {"pop": pop_status}
+    PipeData["pop"] = pop_status
 
-def build_energy_status(core):
+    return PipeData
+
+
+def build_energy_status(PipeData, args):
     """
     Builds energy statistics for the Energy Battle game.
     This is game-specific and not required by the Noah Kernel.
@@ -576,6 +578,8 @@ def build_energy_status(core):
     Returns:
         dict: {"energy": {place: {team: total, "sum": total}, "all": total}}
     """
+    core = args
+
     energy_status = {}
     all_energy = 0
 
@@ -592,7 +596,19 @@ def build_energy_status(core):
         all_energy += pl.energy
 
     energy_status["all"] = all_energy
-    return {"energy": energy_status}
+    PipeData["energy"] = energy_status
+
+    return PipeData
+
+
+default_cmd_table = {
+    "-update_status": [
+        # Required by Noah for AI decision-making
+        build_population_status,
+        # Required by Noah for state queries
+        build_energy_status,
+    ],
+}
 
 
 
@@ -628,7 +644,7 @@ class Core():
         #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
         #   "ai": (func) A function that returns a numerical weight for AI decision-making.
         #   "s_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
-        #   "d_exec": (list) A list of deal-phase execution functions, added to the StreamProcessor.
+        #   "d_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
         self.ActDict = ActDict
 
         # The current round number.
@@ -647,12 +663,6 @@ class Core():
         #     "all": total_energy_in_game
         # }
         self.status = {}
-        self.status_components = [
-            # Required by Noah for AI decision-making
-            build_population_status,
-            # Required by Noah for state queries
-            build_energy_status,
-        ]
 
         # A temporary dictionary to hold stream data for each channel during the dealing phase.
         self.channels = {}
@@ -660,6 +670,14 @@ class Core():
         self.deaths = [] # List of player IDs who died this turn.
         self.ui = ui
         self.exit_game = False # A flag to signal the end of the game loop.
+
+        # A table that contain the names and PipeWorkFlows of kernel commands
+        self.CmdTable = default_cmd_table
+
+        # A table that contain the Event objects
+        self.EventBus = []
+
+        self.debug = True  # The debug mode of the Core
 
     def mk_pldict(self):
         """Creates the `self.PlDict` (player dictionary) based on `self.BattleEnv` settings."""
@@ -687,25 +705,17 @@ class Core():
 
             self.PlDict[i + 1] = pl
 
+
     def update_status(self):
         """
         Updates the cached game state statistics in `self.status`.
-
-        This method now uses a modular component system. Each function in
-        `self.status_components` is called and returns a dictionary fragment,
-        which is merged into the final `self.status`.
 
         This design allows:
         - Noah to provide essential status paths
         - Games to add custom status paths (e.g., snapshot)
         - Easy extension without modifying core Noah code
         """
-        self.status = {}
-
-        for component_func in self.status_components:
-            component_result = component_func(self)
-            # Merge the component's result into the main status dict
-            self.status.update(component_result)
+        self.status = self.Exec("-update_status", "Core.update_status", {})
 
 
     def SelectAct(self):
@@ -786,7 +796,7 @@ class Core():
         for priority in act_order:
             for act_name in self.ActSign[priority]:
                 for act in self.ActSign[priority][act_name]:
-                    act.deal(self) # Queues the action into the stream processor.
+                    act.deal(self) # Queues the action into the pipe workflow.
 
         # After all actions are dealt, check for deaths. This is a preliminary check.
         for _pl in list(self.PlDict.keys()):
@@ -885,6 +895,40 @@ class Core():
         # This might need adjustment based on the main script's structure.
         self.ui = IO(exp=self.ui.exp)
 
+
+    def RaiseError(self, domain, msg):
+        mode = "l"
+        if self.debug:
+            mode += "s"
+        self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, dr=True, color="RED")
+        self.ui.write_log()
+
+
+    def Exec(self, cmd_name: str, domain: str, PipeData=None):
+        if cmd_name not in self.CmdTable:
+            self.RaiseError(domain, f"Command not found: {cmd_name}")
+            return PipeData
+        else:
+            return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
+
+
+    def DealEvents(self):
+        """
+        Deal the events in EventBus and clear it
+        """
+        if not self.EventBus:
+            return
+
+        for event in self.EventBus:
+            # try:
+            event.happen(self)
+            # except Exception as e:
+            #     self.RaiseError("Core.DealEvents", f"Event {event.type} failed: {e}")
+
+        # Clear the EventBus
+        self.EventBus.clear()
+
+
     def debug_snapshot(self, title="Game State"):
         msg = []
         msg.append(f"{'='*60}")
@@ -920,4 +964,24 @@ class Core():
         return "\n".join(msg)
 
 
+class Event():
+    """
+    Represents a deferred kernel command.
+
+    An Event encapsulates a command that can be triggered later,
+    potentially with conditions or delays.
+    """
+
+    def __init__(self, cmd_type: str, domain: str, PipeData=None):
+        self.type = cmd_type
+        self.inp = PipeData
+        self.domain = domain
+        self.has_happened = False
+
+    def happen(self, core: Core):
+        if not self.has_happened:
+            core.Exec(self.type, self.domain, self.inp)
+        else:
+            core.RaiseError(self.domain, f"One Event object has happened but try to happend again (Type {self.type}).")
+        self.has_happened = True
 

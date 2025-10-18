@@ -72,13 +72,13 @@ Here's a simplified look at the structure for a single action:
 
 By changing this dictionary, you can fundamentally change the game without ever touching the noah.py kernel file.
 
-### ⛓️ The Resolution Pipeline: d_exec & StreamProcessor
+### ⛓️ The Resolution Pipeline: d_exec & PipeWorkFlow
 
 This is arguably the most powerful feature of the Noah Kernel.
 
-Notice that d_exec is a list of functions. When an action is resolved, the kernel doesn't just call one function. Instead, it uses the StreamProcessor to create a processing pipeline.
+Notice that d_exec is a list of functions. When an action is resolved, the kernel doesn't just call one function. Instead, it uses the PipeWorkFlow to create a processing pipeline.
 
-The StreamProcessor takes an initial data stream (e.g., information about an attack) and passes it to the first function in the list. The output of that function becomes the input for the second function, and so on.
+The PipeWorkFlow takes an initial pipe data (e.g., information about an attack) and passes it to the first function in the list. The output of that function becomes the input for the second function, and so on.
 
 Let's take ark.py's Shoot action as a perfect example. Its d_exec list is:
 

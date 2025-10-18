@@ -75,7 +75,7 @@ Expression = {
     '/act/5/dealed': f"{C['MAGENTA']}Player $0 has activated Reflect.{C['RESET']}",
 
     '/act/stt/main-exp': "Player $0 / HP $1 / Energy $2 / Position $3 / Damage Dealt $4 / Kills $5",
-    '/act/stt/select-team': "View status of which team? [0~$0 / empty for all] ",
+    '/act/stt/select-team': "View status of which team? [empty for all] ",
 
     '/act/6/battle': "-- Player $0 unleashes an Energy Wave from level $1 in direction $2 --",
     '/act/6/ask-seth': f"Wave direction\n    {C['CYAN']}[ 1 up / 0 straight / -1 down / empty for auto / space to cancel ]{C['RESET']} ",
@@ -221,7 +221,7 @@ Expression = {
     '/act/5/dealed': f"{C['MAGENTA']}玩家$0启用了反射{C['RESET']}",
 
     '/act/stt/main-exp': "玩家$0 / 血量$1 能量$2 位置$3 输出$4 击杀$5",
-    '/act/stt/select-team': "查看哪个队伍的所有玩家的状态? [0~$0 空则全场] ",
+    '/act/stt/select-team': "查看哪个队伍的所有玩家的状态? [空则全场] ",
 
     '/act/6/battle': "-- 玩家$0在第$1层向$2方向放出了能量波 --",
     '/act/6/ask-seth': f"射击方向\n    {C['CYAN']}[ 1向上 / 0平射 / -1向下 / 不填自动 / 空格取消 ] {C['RESET']}",
@@ -292,6 +292,41 @@ Expression = {
     '/ark/setting/desc/wave_distance': '"能量波"的射程',
     '/ark/setting/desc/team_size': "每个AI队伍的人数[1-各自为战]",
     '/ark/setting/desc/assist_team': "第一个AI队伍是否与人类合作？[0-No 1-Yes]",
+
+
+    "/ark/setting/tweak-adding": "正在添加微调 $0",
+    "/ark/setting/tweak-added": "微调已添加 $0",
+    "/ark/setting/tweak-summary": "共配置了$0个战前微调 ",
+    "/ark/setting/tweak-summary-item": "• $0 -> $1",
+    "/ark/setting/tweak-configured": "个已配置",
+
+    "/ark/setting/desc/tweak_hp": "微调生命值",
+    "/ark/setting/desc/tweak_energy": "微调能量",
+    "/ark/setting/desc/tweak_place": "微调位置",
+    "/ark/setting/desc/tweak_team": "微调队伍归属",
+
+    "/ark/setting/tweak_hp/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_hp/args/hp_change": "HP变化量（可为负） > ",
+    "/ark/setting/tweak_energy/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_energy/args/energy_change": "能量变化量（可为负） > ",
+    "/ark/setting/tweak_place/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_place/args/new_place": "新位置 > ",
+    "/ark/setting/tweak_team/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_team/args/NewTeamID": "新的队伍编号 > ",
+
+    "/ark/tweak/executing": "正在执行战前微调...",
+    "/ark/tweak/complete": "战前微调完成！",
+    "/ark/tweak/hp/success": "玩家$0的HP变化了$1 当前HP$2",
+    "/ark/tweak/energy/success": "玩家$0的能量变化了$1 当前能量$2",
+    "/ark/tweak/place/success": "玩家$0移动到位置$1",
+    "/ark/tweak/team/success": "玩家$0已经设置为归属队伍$1",
+    "/ark/tweak/error/player-not-found": "错误 玩家$0不存在",
+    "/ark/tweak/error/out-of-map": "错误 位置$0超出地图范围",
+
+    "/ark/setting/target-parsed": "✓ 已选择$0个目标 ",
+    "/ark/setting/error-parse": "✗ 解析错误 $0",
+    "/ark/setting/tweak-added-batch": "✓ 微调已添加 $0（$1个目标）",
+
 },
 
 "zh_tw": {
@@ -367,7 +402,7 @@ Expression = {
     '/act/5/dealed': f"{C['MAGENTA']}玩家$0啟用了反射{C['RESET']}",
 
     '/act/stt/main-exp': "玩家$0 / 血量$1 能量$2 位置$3 輸出$4 擊殺$5",
-    '/act/stt/select-team': "查看哪個隊伍的所有玩家狀態? [0~$0 空則全場] ",
+    '/act/stt/select-team': "查看哪個隊伍的所有玩家狀態? [空則全場] ",
 
     '/act/6/battle': "-- 玩家$0在第$1層向$2方向放出了能量波 --",
     '/act/6/ask-seth': f"射擊方向\n    {C['CYAN']}[ 1向上 / 0平射 / -1向下 / 不填自動 / 空白鍵取消 ] {C['RESET']}",
@@ -514,7 +549,7 @@ Expression = {
     '/act/5/dealed': f"{C['MAGENTA']}プレイヤー$0は反射を起動した。{C['RESET']}",
 
     '/act/stt/main-exp': "プレイヤー$0 / HP $1 / エネルギー $2 / 位置 $3 / 与ダメージ $4 / キル数 $5",
-    '/act/stt/select-team': "どのチームの状況を表示しますか？ [0～$0 / 空欄で全体] ",
+    '/act/stt/select-team': "どのチームの状況を表示しますか？ [空欄で全体] ",
 
     '/act/6/battle': "-- プレイヤー$0が階層$1から$2方向へエネルギー波を放つ --",
     '/act/6/ask-seth': f"射撃方向\n    {C['CYAN']}[ 1 上 / 0 水平 / -1 下 / 空欄で自動 / Spaceでキャンセル ]{C['RESET']} ",

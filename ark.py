@@ -114,8 +114,95 @@ InitBattleEnv = {
         "6": "wave_distance",
         "7": "team_size",
         "8": "assist_team",
-    }
+        "t1": "tweak_hp",
+        "t2": "tweak_energy",
+        "t3": "tweak_place",
+        "t4": "tweak_team",
+    },
+
+    # ===== New: tweak =====
+    "tweaks": [],  # Store all the tweak events
+
+    "tweak_args": {
+        "tweak_hp": ["target_id", "hp_change"],
+        "tweak_energy": ["target_id", "energy_change"],
+        "tweak_place": ["target_id", "new_place"],
+        "tweak_team": ["target_id", "NewTeamID"],
+    },
 }
+
+
+def execute_hp_tweak(PipeData, args):
+    core = args
+    try:
+        target_id = int(PipeData["target_id"])
+        hp_change = int(PipeData["hp_change"])
+
+        if target_id in core.PlDict:
+            core.PlDict[target_id].HP += hp_change
+            core.ui.out("/ark/tweak/hp/success", imp=[target_id, hp_change, core.PlDict[target_id].HP])
+        else:
+            core.ui.out("/ark/tweak/error/player-not-found", imp=[target_id], color="RED")
+    except (ValueError, KeyError) as e:
+        core.RaiseError("execute_hp_tweak", f"Invalid parameters: {e}")
+
+    return PipeData
+
+
+def execute_energy_tweak(PipeData, args):
+    core = args
+    try:
+        target_id = int(PipeData["target_id"])
+        energy_change = int(PipeData["energy_change"])
+
+        if target_id in core.PlDict:
+            core.PlDict[target_id].energy += energy_change
+            if core.PlDict[target_id].energy < 0:
+                core.PlDict[target_id].energy = 0
+            core.ui.out("/ark/tweak/energy/success", imp=[target_id, energy_change, core.PlDict[target_id].energy])
+        else:
+            core.ui.out("/ark/tweak/error/player-not-found", imp=[target_id], color="RED")
+    except (ValueError, KeyError) as e:
+        core.RaiseError("execute_energy_tweak", f"Invalid parameters: {e}")
+
+    return PipeData
+
+def execute_place_tweak(PipeData, args):
+    core = args
+    try:
+        target_id = int(PipeData["target_id"])
+        new_place = int(PipeData["new_place"])
+
+        if target_id in core.PlDict:
+            if abs(new_place) <= core.BattleEnv["map"]:
+                core.PlDict[target_id].place = new_place
+                core.ui.out("/ark/tweak/place/success", imp=[target_id, new_place])
+            else:
+                core.ui.out("/ark/tweak/error/out-of-map", imp=[new_place], color="RED")
+        else:
+            core.ui.out("/ark/tweak/error/player-not-found", imp=[target_id], color="RED")
+    except (ValueError, KeyError) as e:
+        core.RaiseError("execute_place_tweak", f"Invalid parameters: {e}")
+
+    return PipeData
+
+
+def execute_team_tweak(PipeData, args):
+    core = args
+    try:
+        target_id = int(PipeData["target_id"])
+        NewTeamID = int(PipeData["NewTeamID"])
+
+        if target_id in core.PlDict:
+            core.PlDict[target_id].team = NewTeamID
+            core.ui.out("/ark/tweak/team/success", imp=[target_id, NewTeamID, core.PlDict[target_id].HP])
+        else:
+            core.ui.out("/ark/tweak/error/player-not-found", imp=[target_id], color="RED")
+    except (ValueError, KeyError) as e:
+        core.RaiseError("execute_team_tweak", f"Invalid parameters: {e}")
+
+    return PipeData
+
 
 # --- Action Logic Functions ---
 # These functions define the behavior of each action in the game.
@@ -127,14 +214,14 @@ def charge_s(pl, core, auto):
     """Selection logic for the 'Charge' action."""
     return (True, noah.Act(pl.id, "1"))
 
-def charge_d(InStream, args):
+def charge_d(PipeData, args):
     """Resolution logic for the 'Charge' action."""
     act, core = args
     act.pay(core)
     pl = core.PlDict[act.ownerID]
 
     if pl.real:
-        core.ui.typing_delay = core.org_delay*1.5
+        core.ui.typing_delay = core.org_delay*2.5
     core.ui.out("./dealed", imp=[act.ownerID, core.PlDict[act.ownerID].energy])
     if pl.real:
         core.ui.typing_delay = 0
@@ -279,14 +366,15 @@ def shot_s(pl, core, auto):
         while core.ActDict["2"]["price"](act) > s.energy:
             act.lv -= 1
             if act.lv < 1:
-                core.ui.out(f"[shot_s] ERROR: shot_price might wemt wrong (in P{pl.id}'s selection)", mode="l", dr=True)
+                core.RaiseError("shot_s", f"shot_price might wemt wrong (in P{pl.id}'s selection)")
                 break
 
         # Defensive programming: ensure AI doesn't shoot with 0 energy,
         # even though the 'able' function should prevent this.
         if act.lv <= 0:
-            core.ui.out(f"[shot_s] ERROR: Player {pl.id} could not afford shotting but selected it automatically", mode="l", dr=True)
+            core.RaiseError("shot_s", f"Player {pl.id} could not afford shotting but selected it automatically")
             return (False, None)
+
 
         act.target = int(target)
         act.seth = get_seth(s.place, core.status["snap"][target][2])
@@ -299,9 +387,9 @@ def shot_s(pl, core, auto):
 
 # --- 'd_exec' Pipeline Functions for Shot-Like Actions ---
 # These functions are executed in sequence during the resolution phase.
-# The `InStream` dictionary is passed from one function to the next.
+# The `PipeData` dictionary is passed from one function to the next.
 
-def firecount(myself, InStream, core, act, target=False):
+def firecount(myself, PipeData, core, act, target=False):
     """
     Helper function to calculate hits and misses for a single attacker against one or more targets.
     This can be reused by both 'Shoot' and 'Energy Wave'.
@@ -320,18 +408,18 @@ def firecount(myself, InStream, core, act, target=False):
 
                 if is_miss:
                     # The shot missed.
-                    InStream["msg"].append([f"/act/{cur_act.key}/shot-miss", [myself.id, target.id, cur_act.lv]])
+                    PipeData["msg"].append([f"/act/{cur_act.key}/shot-miss", [myself.id, target.id, cur_act.lv]])
                 else:
                     # The shot hit.
-                    InStream["msg"].append([f"/act/{cur_act.key}/shot", [myself.id, target.id, cur_act.lv]])
-                    if target.id not in InStream["damage"]:
-                        InStream["damage"][target.id] = cur_act.lv
+                    PipeData["msg"].append([f"/act/{cur_act.key}/shot", [myself.id, target.id, cur_act.lv]])
+                    if target.id not in PipeData["damage"]:
+                        PipeData["damage"][target.id] = cur_act.lv
                     else:
-                        InStream["damage"][target.id] += cur_act.lv
+                        PipeData["damage"][target.id] += cur_act.lv
                 cur_act.dealed.append(target.id)
-    return InStream
+    return PipeData
 
-def crossfire_evaluate(InStream, args):
+def crossfire_evaluate(PipeData, args):
     """Pipeline Step 1: Evaluate initial hits and damage."""
     act, core = args
     myself = core.PlDict[act.ownerID]
@@ -339,37 +427,37 @@ def crossfire_evaluate(InStream, args):
         core.ui.typing_delay = core.org_delay*3
 
     # This function initiates the data stream for a crossfire action.
-    InStream = {"msg": [], "damage": {}}
-    InStream["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
-    InStream = firecount(myself, InStream, core, act)
-    return InStream
+    PipeData = {"msg": [], "damage": {}}
+    PipeData["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
+    PipeData = firecount(myself, PipeData, core, act)
+    return PipeData
 
-def crossfire_wave_eval(InStream, args):
+def crossfire_wave_eval(PipeData, args):
     """Pipeline Step 1 (for Wave): Evaluate hits on all players in the path."""
     act, core = args
     myself = core.PlDict[act.ownerID]
 
     # This function initiates the data stream for a wave action.
-    InStream = {"msg": [], "damage": {}}
-    InStream["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
-    InStream["msg"].append(["/share/endl", []])
+    PipeData = {"msg": [], "damage": {}}
+    PipeData["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
+    PipeData["msg"].append(["/share/endl", []])
 
     for pl in core.PlDict.values():
         is_target = ((pl.real and pl != myself) or myself.team != pl.team) and \
                         get_seth(myself.place, pl.place) == act.seth
         if is_target:
-            InStream = firecount(myself, InStream, core, act, pl)
+            PipeData = firecount(myself, PipeData, core, act, pl)
 
-    InStream["msg"].append(["/share/endl", []])
-    return InStream
+    PipeData["msg"].append(["/share/endl", []])
+    return PipeData
 
-def crossfire_crash(InStream, args):
+def crossfire_crash(PipeData, args):
     """Pipeline Step 2: Check for counter-fire and projectile annihilation."""
     act, core = args
     attacker = core.PlDict[act.ownerID]
     msg = []
 
-    for playerID in InStream["damage"].keys():
+    for playerID in PipeData["damage"].keys():
         if playerID != attacker.id:
             for pos in core.PlDict[playerID].acts:
                 cur_act = core.ActSign[core.ActDict[pos[0]]["priority"]][pos[0]][pos[1]]
@@ -384,78 +472,78 @@ def crossfire_crash(InStream, args):
                         else:
                             # Both sides hit, projectiles crash.
                             msg.append([f"/act/{cur_act.key}/anti", [playerID, attacker.id, cur_act.lv]])
-                            crash_amount = min(cur_act.lv, InStream["damage"][playerID])
+                            crash_amount = min(cur_act.lv, PipeData["damage"][playerID])
                             msg.append([f"/act/{cur_act.key}/crash", [crash_amount]])
-                            InStream["damage"][playerID] -= cur_act.lv
+                            PipeData["damage"][playerID] -= cur_act.lv
 
                         cur_act.dealed.append(attacker.id)
                         cur_act.pay(core)
 
-    InStream["msg"] += msg
+    PipeData["msg"] += msg
     if msg:
-        InStream["msg"].append(["/share/endl", []])
-    return InStream
+        PipeData["msg"].append(["/share/endl", []])
+    return PipeData
 
-def crossfire_reflect(InStream, args):
+def crossfire_reflect(PipeData, args):
     """Pipeline Step 3: Check if any target has 'Reflect' active."""
     act, core = args
     attacker = core.PlDict[act.ownerID]
 
     someone_reflected = False
-    for playerID in InStream["damage"].keys():
+    for playerID in PipeData["damage"].keys():
         if "reflect" in core.PlDict[playerID].status and "reflect" not in attacker.status:
-            InStream["msg"].append(["./reflect", [act.ownerID, InStream["damage"][playerID]]])
-            if InStream["damage"][playerID] > 0:
-                InStream["damage"][playerID] *= -1 # Negative damage means it's reflected back
+            PipeData["msg"].append(["./reflect", [act.ownerID, PipeData["damage"][playerID]]])
+            if PipeData["damage"][playerID] > 0:
+                PipeData["damage"][playerID] *= -1 # Negative damage means it's reflected back
             else:
-                InStream["damage"][playerID] *= 2
+                PipeData["damage"][playerID] *= 2
             someone_reflected = True
 
     if someone_reflected:
-        InStream["msg"].append(["/share/endl", []])
-    return InStream
+        PipeData["msg"].append(["/share/endl", []])
+    return PipeData
 
-def crossfire_defend(InStream, args):
+def crossfire_defend(PipeData, args):
     """Pipeline Step 4: Check if any target has 'Defend' active."""
     act, core = args
     someone_defend = False
-    for playerID in InStream["damage"].keys():
+    for playerID in PipeData["damage"].keys():
         if "defend" in core.PlDict[playerID].status:
-            InStream["msg"].append(["./defend", [playerID, InStream["damage"][playerID]]])
-            if InStream["damage"][playerID] > 0:
-                InStream["damage"][playerID] = 0 # Nullify damage
+            PipeData["msg"].append(["./defend", [playerID, PipeData["damage"][playerID]]])
+            if PipeData["damage"][playerID] > 0:
+                PipeData["damage"][playerID] = 0 # Nullify damage
             someone_defend = True
 
     if someone_defend:
-        InStream["msg"].append(["/share/endl", []])
-    return InStream
+        PipeData["msg"].append(["/share/endl", []])
+    return PipeData
 
-def crossfire_final(InStream, args):
+def crossfire_final(PipeData, args):
     """Pipeline Step 5: Apply final damage and display results."""
     act, core = args
     attacker = core.PlDict[act.ownerID]
 
-    for playerID, hurt_lv in InStream["damage"].items():
+    for playerID, hurt_lv in PipeData["damage"].items():
         tg = core.PlDict[playerID]
 
         if hurt_lv > 0: # Positive value: target takes damage.
             tg.hurted(hurt_lv, attacker.id, act.key, core)
-            InStream["msg"].append(["./final-hurt", [playerID, hurt_lv, tg.HP]])
+            PipeData["msg"].append(["./final-hurt", [playerID, hurt_lv, tg.HP]])
         elif hurt_lv < 0: # Negative value: attacker takes reflected damage.
             attacker.hurted(-hurt_lv, tg.id, act.key, core)
-            InStream["msg"].append(["./final-hurt", [attacker.id, -hurt_lv, attacker.HP]])
+            PipeData["msg"].append(["./final-hurt", [attacker.id, -hurt_lv, attacker.HP]])
         else: # Zero damage
-            InStream["msg"].append(["./peace", []])
+            PipeData["msg"].append(["./peace", []])
 
     # Display the battle log.
-    if len(InStream["msg"]) > 1:
-        msg = InStream["msg"].pop(0)
+    if len(PipeData["msg"]) > 1:
+        msg = PipeData["msg"].pop(0)
         core.ui.out("/share/endl")
         core.ui.out(msg[0], imp=msg[1], color=act.color)
         core.ui.indent += 1
-        for msg in InStream["msg"]:
+        for msg in PipeData["msg"]:
             core.ui.out(msg[0], imp=msg[1], color=act.color)
-        if len(InStream["msg"]) >= 4:
+        if len(PipeData["msg"]) >= 4:
             core.ui.out("./wonderful", color="MAGENTA")
         core.ui.indent -= 1
 
@@ -467,7 +555,7 @@ def defend_s(pl, core, auto):
     """Selection logic for the 'Defend' action."""
     return (True, noah.Act(pl.id, "3"))
 
-def defend_d(InStream, args):
+def defend_d(PipeData, args):
     """Resolution logic for the 'Defend' action."""
     act, core = args
     act.pay(core)
@@ -475,7 +563,7 @@ def defend_d(InStream, args):
     pl.status["defend"] = True
 
     if pl.real:
-        core.ui.typing_delay = core.org_delay*1.5
+        core.ui.typing_delay = core.org_delay*2.5
     core.ui.out("./dealed", imp=[act.ownerID])
     if pl.real:
         core.ui.typing_delay = 0
@@ -562,11 +650,11 @@ def blackhole_s(pl, core, auto):
         return (False, None)
 
     else:
-        core.ui.out(f"[wave_s] ERROR: Player {pl.id} can't afford blackhole but selected it", mode="l", dr=True)
+        core.RaiseError("wave_s", f"Player {pl.id} can't afford blackhole but selected it")
         return (False, None)
 
 
-def blackhole_d(InStream, args):
+def blackhole_d(PipeData, args):
     """Resolution logic for 'Black Hole'."""
     act, core = args
     act.pay(core)
@@ -594,7 +682,7 @@ def blackhole_d(InStream, args):
     return None
 
 
-def move_d(InStream, args):
+def move_d(PipeData, args):
     """Resolution logic for the 'Move' action."""
     act, core = args
     act.pay(core)
@@ -603,10 +691,10 @@ def move_d(InStream, args):
     pl.place += st  # Perform the move.
 
     if abs(pl.place) > core.BattleEnv["map"]:
-        core.ui.out(f"[move_d] ERROR: Player {pl.id} is out of map, in place {pl.place}", mode="l", dr=True)
+        core.RaiseError("move_d", f"Player {pl.id} is out of map, in place {pl.place}")
 
     if pl.real:
-        core.ui.typing_delay = core.org_delay*1.5
+        core.ui.typing_delay = core.org_delay*2.5
     core.ui.out("./dealed", imp=[act.ownerID, st, pl.place])
     if pl.real:
         core.ui.typing_delay = 0
@@ -644,7 +732,7 @@ def wave_s(pl, core, auto):
             core.ui.out(["/share/poor", "/share/endl"], color='MAGENTA')
             core.ui.indent -= 1
         else:
-            core.ui.out(f"[wave_s] ERROR: Player {pl.id} can't afford wave but selected it", mode="l", dr=True)
+            core.RaiseError("wave_s", f"Player {pl.id} can't afford wave but selected it")
         return (False, None)
 
     elif not auto: # Human Logic
@@ -761,14 +849,14 @@ def reflect_s(pl, core, auto):
             core.ui.indent -= 1
         return (False, None)
 
-def reflect_d(InStream, args):
+def reflect_d(PipeData, args):
     """Resolution logic for 'Reflect'."""
     act, core = args
     act.pay(core)
     pl = core.PlDict[act.ownerID]
     pl.status["reflect"] = True # reflect status
     if pl.real:
-        core.ui.typing_delay = core.org_delay*1.5
+        core.ui.typing_delay = core.org_delay*2.5
     core.ui.out("./dealed", imp=[act.ownerID])
     if pl.real:
         core.ui.typing_delay = 0
@@ -792,7 +880,7 @@ def ShowStatus_s(pl, core, auto):
     """Selection logic for 'ShowStatus' (human-only utility action)."""
     core.ui.indent += 1
     all_teams = [i[3] for i in core.status["snap"].values()]
-    ask = core.ui.inp('./select-team', imp=[max(all_teams) if all_teams else 0])
+    ask = core.ui.inp('./select-team')
     try:
         selected_team_ids = [int(ask)]
     except ValueError:
@@ -899,136 +987,271 @@ BaseActDict = {
 
 
 
-def validate_int(InStream, args):
+def validate_int(PipeData, args):
     core, ArkUI = args
-    if InStream["error"]:
-        return InStream
+    if PipeData["error"]:
+        return PipeData
 
     try:
-        InStream["value"] = int(InStream["value"])
-        return InStream
+        PipeData["value"] = int(PipeData["value"])
+        return PipeData
     except ValueError:
-        InStream["error"] = "/ark/setting/error-not-int"
-        InStream["success"] = False
-        return InStream
+        PipeData["error"] = "/ark/setting/error-not-int"
+        PipeData["success"] = False
+        return PipeData
 
 
-def validate_non_negative(InStream, args):
+def validate_non_negative(PipeData, args):
     core, ArkUI = args
-    if InStream["error"]:
-        return InStream
+    if PipeData["error"]:
+        return PipeData
 
-    if InStream["value"] < 0:
-        InStream["error"] = "/ark/setting/error-non-negative"
-        InStream["success"] = False
-        return InStream
-    return InStream
-
-
-def validate_int_and_non_negative(InStream, args):
-    InStream = validate_int(InStream, args)
-    InStream = validate_non_negative(InStream, args)
-    return InStream
+    if PipeData["value"] < 0:
+        PipeData["error"] = "/ark/setting/error-non-negative"
+        PipeData["success"] = False
+        return PipeData
+    return PipeData
 
 
-def validate_map_range(InStream, args):
+def validate_int_and_non_negative(PipeData, args):
+    PipeData = validate_int(PipeData, args)
+    PipeData = validate_non_negative(PipeData, args)
+    return PipeData
+
+
+def validate_map_range(PipeData, args):
     """check if the map size reasonable"""
     core, ArkUI = args
-    if InStream["error"] or InStream["key"] != "map":
-        return InStream
+    if PipeData["error"] or PipeData["key"] != "map":
+        return PipeData
 
-    if InStream["value"] > 100:
-        InStream["error"] = "/ark/setting/error-map-range"
-        InStream["error_imp"] = [InStream["value"]]
-        InStream["success"] = False
-        return InStream
-    return InStream
+    if PipeData["value"] > 100:
+        PipeData["error"] = "/ark/setting/error-map-range"
+        PipeData["error_imp"] = [PipeData["value"]]
+        PipeData["success"] = False
+        return PipeData
+    return PipeData
 
 
-def validate_team_size(InStream, args):
+def validate_team_size(PipeData, args):
     """team_size >= 1"""
     core, ArkUI = args
-    if InStream["error"] or InStream["key"] != "team_size":
-        return InStream
+    if PipeData["error"] or PipeData["key"] != "team_size":
+        return PipeData
 
-    if InStream["value"] < 1:
-        InStream["value"] = 1  # auto correct
-        InStream["auto_corrected"] = True
-    return InStream
+    if PipeData["value"] < 1:
+        PipeData["value"] = 1  # auto correct
+        PipeData["auto_corrected"] = True
+    return PipeData
 
 
-def post_check_real_num_consistency(InStream, args):
+def post_check_real_num_consistency(PipeData, args):
     """The amount of real player could not greater than the total"""
     core, ArkUI = args
-    if InStream["error"] or InStream["key"] not in ["num", "real"]:
-        return InStream
+    if PipeData["error"] or PipeData["key"] not in ["num", "real"]:
+        return PipeData
 
     BattleEnv = core.BattleEnv if hasattr(core, 'BattleEnv') else InitBattleEnv
 
     # temply apply
     temp_env = BattleEnv.copy()
-    temp_env[InStream["key"]] = InStream["value"]
+    temp_env[PipeData["key"]] = PipeData["value"]
 
     if temp_env["real"] > temp_env["num"]:
         # auto correct
-        if InStream["key"] == "real":
-            InStream["value"] = temp_env["num"]
+        if PipeData["key"] == "real":
+            PipeData["value"] = temp_env["num"]
         else:
             # It means that key == "num"
-            if temp_env["real"] > InStream["value"]:
-                BattleEnv["real"] = InStream["value"]
-                InStream["also_updated"] = [
+            if temp_env["real"] > PipeData["value"]:
+                BattleEnv["real"] = PipeData["value"]
+                PipeData["also_updated"] = [
                     ("real", BattleEnv["real"])
                 ]
 
-        InStream["warning"] = "/ark/setting/error-real-num-mismatch"
-        InStream["warning_imp"] = [temp_env["real"], temp_env["num"]]
+        PipeData["warning"] = "/ark/setting/error-real-num-mismatch"
+        PipeData["warning_imp"] = [temp_env["real"], temp_env["num"]]
 
-    return InStream
+    return PipeData
 
 
-def apply_value(InStream, args):
+def apply_value(PipeData, args):
     """Apply the value to BattleEnv"""
     core, ArkUI = args
-    if InStream["error"]:
-        return InStream
+    if PipeData["error"]:
+        return PipeData
 
     BattleEnv = core.BattleEnv if hasattr(core, 'BattleEnv') else InitBattleEnv
-    BattleEnv[InStream["key"]] = InStream["value"]
-    InStream["success"] = True
-    return InStream
+    BattleEnv[PipeData["key"]] = PipeData["value"]
+    PipeData["success"] = True
+    return PipeData
 
 
-def display_result(InStream, args):
+def display_result(PipeData, args):
     """Final step: show result"""
     core, ArkUI = args
 
-    if InStream["error"]:
-        ArkUI.out(InStream["error"], imp=InStream.get("error_imp", []))
-        return InStream
+    if PipeData["error"]:
+        ArkUI.out(PipeData["error"], imp=PipeData.get("error_imp", []))
+        return PipeData
 
-    setting_name = ArkUI.get(f"/ark/setting/desc/{InStream['key']}")
+    setting_name = ArkUI.get(f"/ark/setting/desc/{PipeData['key']}")
 
     # Show warnings
-    if InStream.get("warning"):
-        ArkUI.out(InStream["warning"], imp=InStream.get("warning_imp", []))
+    if PipeData.get("warning"):
+        ArkUI.out(PipeData["warning"], imp=PipeData.get("warning_imp", []))
 
     # Show updated result
-    ArkUI.out("/ark/setting/updated", imp=[setting_name, InStream["value"]])
+    ArkUI.out("/ark/setting/updated", imp=[setting_name, PipeData["value"]])
 
     # the "also updated" args
-    if InStream.get("also_updated"):
-        for param_key, param_value in InStream["also_updated"]:
+    if PipeData.get("also_updated"):
+        for param_key, param_value in PipeData["also_updated"]:
             param_name = ArkUI.get(f"/ark/setting/desc/{param_key}")
             ArkUI.out("/ark/setting/updated", imp=[param_name, param_value])
 
-    return InStream
+    return PipeData
 
 
-def apply_and_display(InStream, args):
-    InStream = apply_value(InStream, args)
-    InStream = display_result(InStream, args)
-    return InStream
+def apply_and_display(PipeData, args):
+    PipeData = apply_value(PipeData, args)
+    PipeData = display_result(PipeData, args)
+    return PipeData
+
+
+
+def parse_target_ids(input_str: str, max_id: int = 9999) -> list:
+    """
+    Explain the ID input from user
+    - Single ID: "5"
+    - Multiple ID: "1,3,5"
+    - Range: "1-5"
+    - Mixed: "1,3-5,8"
+    """
+    if not input_str.strip():
+        raise ValueError("Input cannot be empty")
+
+    result = set()  # auto remove the repeated ones
+
+    parts = input_str.split(',')
+
+    for part in parts:
+        part = part.strip()
+
+        if '-' in part:
+            # Deal range
+            try:
+                start_str, end_str = part.split('-', 1)
+                start = int(start_str.strip())
+                end = int(end_str.strip())
+
+                if start > end:
+                    raise ValueError(f"Range formant error：{part}")
+
+                if start < 1 or end > max_id:
+                    raise ValueError(f"ID out of range：{part}")
+
+                # add
+                result.update(range(start, end + 1))
+            except ValueError as e:
+                if "Range formant error" in str(e) or "ID out of range" in str(e):
+                    raise
+                raise ValueError(f"Range formant error：{part}")
+        else:
+            # 处理单个ID
+            try:
+                id_num = int(part)
+                if id_num < 1 or id_num > max_id:
+                    raise ValueError(f"ID out of range：{id_num}")
+                result.add(id_num)
+            except ValueError:
+                raise ValueError(f"Invalid ID：{part}")
+
+    return sorted(list(result))
+
+
+
+def ask_for_tweak_params(tweak_name: str, ArkUI: noah.IO) -> dict:
+    params = {}
+    arg_list = InitBattleEnv["tweak_args"].get(tweak_name, [])
+
+    ArkUI.workdir = f"/ark/setting/{tweak_name}/args/"
+    ArkUI.indent += 1
+
+    for arg_name in arg_list:
+        while True:
+            try:
+                value_str = ArkUI.inp(f"./{arg_name}")
+
+                if arg_name == "target_id":
+                    target_ids = parse_target_ids(value_str, max_id=InitBattleEnv["num"])
+                    params[arg_name] = target_ids
+
+                    ArkUI.out("/ark/setting/target-parsed", imp=[len(target_ids)], color="GREEN")
+                else:
+                    value = int(value_str)
+                    params[arg_name] = value
+
+                break
+            except ValueError as e:
+                ArkUI.out("/ark/setting/error-parse", imp=[str(e)], color="RED")
+
+    ArkUI.indent -= 1
+    ArkUI.out("/share/endl")
+
+    return params
+
+
+def create_tweak_event(PipeData, args):
+    core, ArkUI = args
+    tweak_name = PipeData["key"]
+
+    params = ask_for_tweak_params(tweak_name, ArkUI)
+
+    if "target_id" in params:
+        target_ids = params["target_id"]
+
+        for target_id in target_ids:
+            single_params = params.copy()
+            single_params["target_id"] = target_id
+
+            tweak_event = noah.Event(
+                cmd_type=f"-{tweak_name}",
+                domain="Setting.Tweak",
+                PipeData=single_params
+            )
+
+            InitBattleEnv["tweaks"].append(tweak_event)
+
+        PipeData["target_count"] = len(target_ids)
+    else:
+        tweak_event = noah.Event(
+            cmd_type=f"-{tweak_name}",
+            domain="Setting.Tweak",
+            PipeData=params
+        )
+
+        InitBattleEnv["tweaks"].append(tweak_event)
+        PipeData["target_count"] = 1
+
+    PipeData["success"] = True
+    return PipeData
+
+
+
+def display_tweak_result(PipeData, args):
+    core, ArkUI = args
+
+    if PipeData["success"]:
+        tweak_name = ArkUI.get(f"/ark/setting/desc/{PipeData['key']}")
+        target_count = PipeData.get("target_count", 1)
+
+        if target_count > 1:
+            ArkUI.out("/ark/setting/tweak-added-batch", imp=[tweak_name, target_count], color="GREEN")
+        else:
+            ArkUI.out("/ark/setting/tweak-added", imp=[tweak_name], color="GREEN")
+
+    return PipeData
 
 
 
@@ -1073,6 +1296,18 @@ EnvProcessors = {
     "assist_team": {
         "steps": [validate_int_and_non_negative, apply_and_display]
     },
+    "tweak_hp": {
+        "steps": [create_tweak_event, display_tweak_result]
+    },
+    "tweak_energy": {
+        "steps": [create_tweak_event, display_tweak_result]
+    },
+    "tweak_place": {
+        "steps": [create_tweak_event, display_tweak_result]
+    },
+    "tweak_team": {
+        "steps": [create_tweak_event, display_tweak_result]
+    },
 }
 
 
@@ -1080,7 +1315,7 @@ def Setting():
     """A function where player can modify the BattleEnv"""
     global InitBattleEnv
 
-    # Temp core for StreamProcessor.We don't need a full core
+    # Temp core for PipeWorkFlow.We don't need a full core
     class SettingCore:
         def __init__(self):
             self.BattleEnv = InitBattleEnv
@@ -1093,12 +1328,25 @@ def Setting():
     ArkUI.out("./intro")
 
     while True:
+
+        ArkUI.workdir = "/ark/setting/"
         ArkUI.out("./current")
 
         # 显示当前设置
         display_data = []
         for num, key in InitBattleEnv["setting_options"].items():
-            display_data.append((num, ArkUI.get(f"./desc/{key}"), InitBattleEnv[key]))
+            if key in InitBattleEnv.get("tweak_args", {}):
+                tweak_count = len([t for t in InitBattleEnv["tweaks"] if t.type == f"-{key}"])
+                value_display = f"{C['MAGENTA']}{tweak_count}{ArkUI.get("./tweak-configured")}{C['RESET']}"
+            else:
+                value_display = f"{C['CYAN']}{InitBattleEnv[key]}{C['RESET']}"
+
+            display_data.append((
+                f"{C['YELLOW']}{num}{C['RESET']}",
+                ArkUI.get(f"./desc/{key}"),
+                value_display
+            ))
+
         ArkUI.out(noah.table(display_data, f"{C['YELLOW']}$0{C['RESET']}. $1 / {C['CYAN']}$2{C['RESET']}"), dr=True)
         ArkUI.out("/share/endl")
 
@@ -1113,26 +1361,38 @@ def Setting():
         if choice in InitBattleEnv["setting_options"]:
             setting_key = InitBattleEnv["setting_options"][choice]
             setting_name = ArkUI.get(f"./desc/{setting_key}")
-            current_value = InitBattleEnv[setting_key]
 
-            new_value_str = ArkUI.inp("./input-new", imp=[current_value])
-            ArkUI.out("/share/endl")
+            is_tweak = setting_key in InitBattleEnv.get("tweak_args", {})
 
-            if new_value_str == "":
-                # 保持原值
-                ArkUI.out("./updated", imp=[setting_name, current_value])
+            if is_tweak:
+                # Tweaks
+                ArkUI.out("./tweak-adding", imp=[setting_name], color="CYAN")
+
+                PipeData = {
+                    "key": setting_key,
+                    "success": False,
+                }
+
+            else:
+                current_value = InitBattleEnv[setting_key]
+                new_value_str = ArkUI.inp("./input-new", imp=[current_value])
                 ArkUI.out("/share/endl")
-                continue
 
-            # ===== Use StreamProcessor to deal the modify =====
-            InStream = {
-                "key": setting_key,
-                "value": new_value_str,
-                "old_value": current_value,
-                "error": None,
-                "success": False,
-                "warning": None,
-            }
+                if new_value_str == "":
+                    # Remain the same
+                    ArkUI.out("./updated", imp=[setting_name, current_value])
+                    ArkUI.out("/share/endl")
+                    continue
+
+                # ===== Use PipeWorkFlow to deal the modify =====
+                PipeData = {
+                    "key": setting_key,
+                    "value": new_value_str,
+                    "old_value": current_value,
+                    "error": None,
+                    "success": False,
+                    "warning": None,
+                }
 
             # Get the processing stream
             if setting_key in EnvProcessors:
@@ -1148,8 +1408,8 @@ def Setting():
 
             # Conduct the processing
             try:
-                OutStream = noah.StreamProcessor(
-                    InStream=InStream,
+                OutData = noah.PipeWorkFlow(
+                    PipeData=PipeData,
                     steps=steps,
                     args=(core, ArkUI)
                 )
@@ -1162,26 +1422,52 @@ def Setting():
             ArkUI.out("./error-invalid-choice")
             ArkUI.out("/share/endl")
 
+    if InitBattleEnv["tweaks"]:
+        ArkUI.out("./tweak-summary", imp=[len(InitBattleEnv["tweaks"])], color="YELLOW")
+
+        ArkUI.org_delay = ArkUI.typing_delay
+        ArkUI.typing_delay = 0
+
+        for tweak in InitBattleEnv["tweaks"]:
+            tweak_type = tweak.type[1:]
+            ArkUI.out("./tweak-summary-item", imp=[
+                ArkUI.get(f"/ark/setting/desc/{tweak_type}"),
+                str(tweak.inp)[1:-1]
+            ], color="MAGENTA", indent=1)
+        ArkUI.out("/share/endl")
+
+        ArkUI.typing_delay = ArkUI.org_delay
+
     ArkUI.workdir = "/ark/"
 
 
 
-def build_snapshot_status(core):
+def build_snapshot_status(PipeData, args):
     """
     Builds a snapshot of all players' current state.
 
     Returns:
         dict: {"snap": {player_id: [HP, energy, place, team], ...}}
     """
+    core = args
     snap_status = {}
     for pl in core.PlDict.values():
         snap_status[pl.id] = [pl.HP, pl.energy, pl.place, pl.team]
 
-    return {"snap": snap_status}
+    PipeData["snap"] = snap_status
+    return PipeData
 
 
 if not noah.os.path.exists("./logs"):
     noah.os.mkdir("logs")
+
+
+CmdTable = noah.default_cmd_table
+CmdTable["-tweak_hp"] = [execute_hp_tweak]
+CmdTable["-tweak_energy"] = [execute_energy_tweak]
+CmdTable["-tweak_place"] = [execute_place_tweak]
+CmdTable["-tweak_team"] = [execute_team_tweak]
+CmdTable["-update_status"].append(build_snapshot_status)
 
 
 def Gaming():
@@ -1191,12 +1477,25 @@ def Gaming():
 
     core.ui.out(core.battle_env_snapshot(), mode="l", dr=True)
 
-    # Add snapshot to the structure of core.status
-    core.status_components.append(build_snapshot_status)
+    # Add CmdTable to the core
+    core.CmdTable = CmdTable
 
     core.mk_pldict()
     core.ls_acts()
     core.update_status()
+
+    if InitBattleEnv["tweaks"]:
+        core.ui.org_delay = core.ui.typing_delay
+        core.ui.typing_delay = 0
+        core.ui.out("/ark/tweak/executing", color="CYAN")
+        for tweak_event in InitBattleEnv["tweaks"]:
+            tweak_event.has_happened = False
+            core.EventBus.append(tweak_event)
+        core.DealEvents()
+        core.ui.out("/ark/tweak/complete", color="GREEN")
+        core.ui.out("/share/endl")
+        core.ui.typing_delay = core.ui.org_delay
+
 
     while True:  # The main turn-based loop.
         core.ui.write_log()
