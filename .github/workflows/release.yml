@@ -153,4 +153,4 @@ jobs:
             energy-battle-windows-x86_64.exe
             ```
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.JERRY }}
