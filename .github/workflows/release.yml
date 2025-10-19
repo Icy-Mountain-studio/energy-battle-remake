@@ -3,7 +3,7 @@ name: Build Optimized Binaries
 on:
   push:
     tags:
-      - 'v*'
+      - '*'   # 任意 tag 都触发
   workflow_dispatch:
 
 jobs:
@@ -27,9 +27,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'  # 3.11 编译后体积较小且性能好
+          python-version: '3.11'
 
       - name: Install dependencies (Linux)
         if: matrix.platform == 'linux'
@@ -47,8 +47,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install nuitka ordered-set zstandard
 
-      - name: Build with Nuitka (Linux)
-        if: matrix.platform == 'linux'
+      - name: Build with Nuitka
         run: |
           python -m nuitka \
             --standalone \
@@ -69,88 +68,16 @@ jobs:
             --enable-plugin=anti-bloat \
             ark.py
 
-      - name: Build with Nuitka (Windows)
-        if: matrix.platform == 'windows'
-        run: |
-          python -m nuitka ^
-            --standalone ^
-            --onefile ^
-            --assume-yes-for-downloads ^
-            --lto=yes ^
-            --mingw64 ^
-            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} ^
-            --include-data-files=localize.py=localize.py ^
-            --nofollow-import-to=tkinter ^
-            --nofollow-import-to=unittest ^
-            --nofollow-import-to=test ^
-            --nofollow-import-to=distutils ^
-            --nofollow-import-to=setuptools ^
-            --nofollow-import-to=pip ^
-            --remove-output ^
-            --python-flag=no_site ^
-            --python-flag=-OO ^
-            --enable-plugin=anti-bloat ^
-            --windows-console-mode=attach ^
-            ark.py
-
-      - name: Compress with UPX
-        run: |
-          upx --best --lzma energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
-
-      - name: Verify binary
-        run: |
-          ls -lh energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
         with:
           name: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}
           path: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
-          retention-days: 30
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-
-      - name: Create checksums
-        run: |
-          cd energy-battle-linux-x86_64
-          sha256sum * > ../checksums-linux.txt
-          cd ../energy-battle-windows-x86_64
-          sha256sum * > ../checksums-windows.txt
-          cd ..
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          files: |
-            energy-battle-linux-x86_64/energy-battle-linux-x86_64
-            energy-battle-windows-x86_64/energy-battle-windows-x86_64.exe
-            checksums-linux.txt
-            checksums-windows.txt
-          body: |
-            ## 🎮 Energy Battle - Remake ${{ github.ref_name }}
-
-            ### 📦 Downloads
-            - **Linux**: `energy-battle-linux-x86_64`
-            - **Windows**: `energy-battle-windows-x86_64.exe`
-
-            ### ✅ Checksums
-            See `checksums-*.txt` for SHA256 verification.
-
-            ### 🚀 Quick Start
-            ```bash
-            # Linux
-            chmod +x energy-battle-linux-x86_64
-            ./energy-battle-linux-x86_64
-
-            # Windows
-            energy-battle-windows-x86_64.exe
-            ```
+          files: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.JERRY }}
+
