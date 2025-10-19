@@ -1,15 +1,25 @@
-name: Build and Release
+name: Build Optimized Binaries
 
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-20.04
+            platform: linux
+            arch: x86_64
+            ext: ''
+          - os: windows-2019
+            platform: windows
+            arch: x86_64
+            ext: '.exe'
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -17,95 +27,130 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'  # 3.11 编译后体积较小且性能好
 
-      - name: Install dependencies
-        shell: bash
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'linux'
         run: |
-          pip install --upgrade pip
-          pip install "pyinstaller>=6.0"
+          sudo apt-get update
+          sudo apt-get install -y ccache patchelf upx
 
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            sudo apt-get update
-            sudo apt-get install -y upx
-          else
-            choco install upx -y
-          fi
-
-      - name: Build executable
-        shell: bash
+      - name: Install dependencies (Windows)
+        if: matrix.platform == 'windows'
         run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            UPX_ARG=""
-          else
-            UPX_ARG="--upx-dir /usr/bin"
-          fi
+          choco install upx -y
 
-          pyinstaller ark.py \
+      - name: Install Nuitka
+        run: |
+          python -m pip install --upgrade pip
+          pip install nuitka ordered-set zstandard
+
+      - name: Build with Nuitka (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          python -m nuitka \
+            --standalone \
             --onefile \
-            --clean \
-            --name energy_battle_remake-1.2.6 \
-            --strip \
-            --optimize 2 \
-            $UPX_ARG \
-            --exclude-module tkinter \
-            --exclude-module test \
-            --exclude-module asyncio \
-            --exclude-module email \
-            --exclude-module http \
-            --exclude-module xml \
-            --exclude-module html \
-            --exclude-module pydoc_data \
-            --exclude-module distutils \
-            --exclude-module wsgiref \
-            --exclude-module unittest \
-            --exclude-module difflib \
-            --exclude-module inspect \
-            --exclude-module doctest \
-            --exclude-module multiprocessing \
-            --exclude-module concurrent \
-            --exclude-module ctypes \
-            --exclude-module sqlite3 \
-            --exclude-module ssl \
-            --exclude-module socket
+            --assume-yes-for-downloads \
+            --lto=yes \
+            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} \
+            --include-data-files=localize.py=localize.py \
+            --nofollow-import-to=tkinter \
+            --nofollow-import-to=unittest \
+            --nofollow-import-to=test \
+            --nofollow-import-to=distutils \
+            --nofollow-import-to=setuptools \
+            --nofollow-import-to=pip \
+            --remove-output \
+            --python-flag=no_site \
+            --python-flag=-OO \
+            --enable-plugin=anti-bloat \
+            ark.py
 
-      - name: Rename artifacts
-        shell: bash
+      - name: Build with Nuitka (Windows)
+        if: matrix.platform == 'windows'
         run: |
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then
-            mv dist/energy_battle_remake-1.2.6.exe energy_battle_remake-1.2.6-windows.exe
-          else
-            mv dist/energy_battle_remake-1.2.6 energy_battle_remake-1.2.6-linux
-          fi
+          python -m nuitka ^
+            --standalone ^
+            --onefile ^
+            --assume-yes-for-downloads ^
+            --lto=yes ^
+            --mingw64 ^
+            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} ^
+            --include-data-files=localize.py=localize.py ^
+            --nofollow-import-to=tkinter ^
+            --nofollow-import-to=unittest ^
+            --nofollow-import-to=test ^
+            --nofollow-import-to=distutils ^
+            --nofollow-import-to=setuptools ^
+            --nofollow-import-to=pip ^
+            --remove-output ^
+            --python-flag=no_site ^
+            --python-flag=-OO ^
+            --enable-plugin=anti-bloat ^
+            --windows-console-mode=attach ^
+            ark.py
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Compress with UPX
+        run: |
+          upx --best --lzma energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+
+      - name: Verify binary
+        run: |
+          ls -lh energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: binaries-${{ matrix.os }}
-          path: |
-            energy_battle_remake-1.2.6-windows.exe
-            energy_battle_remake-1.2.6-linux
+          name: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}
+          path: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          retention-days: 30
 
   release:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    if: startsWith(github.ref, 'refs/tags/')
 
     steps:
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Create checksums
+        run: |
+          cd energy-battle-linux-x86_64
+          sha256sum * > ../checksums-linux.txt
+          cd ../energy-battle-windows-x86_64
+          sha256sum * > ../checksums-windows.txt
+          cd ..
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/**/energy_battle_remake-1.2.6-windows.exe
-            artifacts/**/energy_battle_remake-1.2.6-linux
+            energy-battle-linux-x86_64/energy-battle-linux-x86_64
+            energy-battle-windows-x86_64/energy-battle-windows-x86_64.exe
+            checksums-linux.txt
+            checksums-windows.txt
+          body: |
+            ## 🎮 Energy Battle - Remake ${{ github.ref_name }}
+
+            ### 📦 Downloads
+            - **Linux**: `energy-battle-linux-x86_64`
+            - **Windows**: `energy-battle-windows-x86_64.exe`
+
+            ### ✅ Checksums
+            See `checksums-*.txt` for SHA256 verification.
+
+            ### 🚀 Quick Start
+            ```bash
+            # Linux
+            chmod +x energy-battle-linux-x86_64
+            ./energy-battle-linux-x86_64
+
+            # Windows
+            energy-battle-windows-x86_64.exe
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
