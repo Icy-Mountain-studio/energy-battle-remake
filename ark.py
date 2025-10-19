@@ -1574,7 +1574,7 @@ def Setting():
         for num, key in InitBattleEnv["setting_options"].items():
             if key in InitBattleEnv.get("tweak_args", {}):
                 tweak_count = len([t for t in InitBattleEnv["tweaks"] if t.type == f"-{key}"])
-                value_display = f"{C['MAGENTA']}{tweak_count}{ArkUI.get("./tweak-configured")}{C['RESET']}"
+                value_display = f"{C['MAGENTA']}{tweak_count}{ArkUI.get('./tweak-configured')}{C['RESET']}"
             else:
                 value_display = f"{C['CYAN']}{InitBattleEnv[key]}{C['RESET']}"
 
