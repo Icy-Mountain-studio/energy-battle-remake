@@ -31,7 +31,7 @@ Expression = {
     '/act/4/price': "0",
     '/act/5/price': "1",
     '/act/6/price': "4",
-    '/act/7/price': "3",
+    '/act/7/price': "4",
     '/act/rl/price': "0",
     '/act/stt/price': "0",
     '/act/bk/price': "0",
@@ -146,6 +146,47 @@ Expression = {
     '/ark/setting/desc/wave_distance': 'Range of "Energy Wave"',
     '/ark/setting/desc/team_size': "Players per AI team [1 = free-for-all]",
     '/ark/setting/desc/assist_team': "Should the first AI team cooperate with humans? [0-No 1-Yes]",
+
+    "/ark/setting/tweak-adding": "Adding tweak: $0",
+    "/ark/setting/tweak-added": "Tweak added: $0",
+    "/ark/setting/tweak-summary": "$0 pre-battle tweaks configured.",
+    "/ark/setting/tweak-summary-item": "• $0 -> $1",
+    "/ark/setting/tweak-configured": " configured.",
+
+    "/ark/setting/desc/tweak_hp": "Tweak HP",
+    "/ark/setting/desc/tweak_energy": "Tweak Energy",
+    "/ark/setting/desc/tweak_place": "Tweak Position",
+    "/ark/setting/desc/tweak_team": "Tweak Team Assignment",
+    "/ark/setting/desc/tweak_ai_quality": "Tweak AI Reasoning Quality",
+    '/ark/setting/desc/ai_quality': "Default AI Quality Level",
+
+    "/ark/setting/tweak_hp/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
+    "/ark/setting/tweak_hp/args/hp_change": "HP change (can be negative) > ",
+    "/ark/setting/tweak_energy/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
+    "/ark/setting/tweak_energy/args/energy_change": "Energy change (can be negative) > ",
+    "/ark/setting/tweak_place/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
+    "/ark/setting/tweak_place/args/new_place": "New position > ",
+    "/ark/setting/tweak_team/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
+    "/ark/setting/tweak_team/args/NewTeamID": "New team ID > ",
+    "/ark/setting/tweak_ai_quality/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
+    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "New reasoning quality level > ",
+
+    "/ark/tweak/executing": "Executing pre-battle tweaks...",
+    "/ark/tweak/complete": "Pre-battle tweaks complete!",
+    "/ark/tweak/hp/success": "Player $0's HP changed by $1. Current HP: $2",
+    "/ark/tweak/energy/success": "Player $0's energy changed by $1. Current energy: $2",
+    "/ark/tweak/place/success": "Player $0 moved to position $1",
+    "/ark/tweak/team/success": "Player $0 has been assigned to team $1",
+    "/ark/tweak/ai_quality/success": "Player $0's reasoning quality has been set to $1",
+    "/ark/tweak/error/player-not-found": "Error: Player $0 not found",
+    "/ark/tweak/error/out-of-map": "Error: Position $0 is outside the map boundaries",
+
+    "/ark/setting/target-parsed": "✓ $0 target(s) selected.",
+    "/ark/setting/error-parse": "✗ Parse error: $0",
+    "/ark/setting/tweak-added-batch": "✓ Tweak added: $0 ($1 targets)",
+
+
+
 },
 
 "zh_cn": {
@@ -177,7 +218,7 @@ Expression = {
     '/act/4/price': "0",
     '/act/5/price': "1",
     '/act/6/price': "4",
-    '/act/7/price': "3",
+    '/act/7/price': "4",
     '/act/rl/price': "0",
     '/act/stt/price': "0",
     '/act/bk/price': "0",
@@ -292,6 +333,7 @@ Expression = {
     '/ark/setting/desc/wave_distance': '"能量波"的射程',
     '/ark/setting/desc/team_size': "每个AI队伍的人数[1-各自为战]",
     '/ark/setting/desc/assist_team': "第一个AI队伍是否与人类合作？[0-No 1-Yes]",
+    '/ark/setting/desc/ai_quality': "AI的默认推理质量级别",
 
 
     "/ark/setting/tweak-adding": "正在添加微调 $0",
@@ -304,6 +346,7 @@ Expression = {
     "/ark/setting/desc/tweak_energy": "微调能量",
     "/ark/setting/desc/tweak_place": "微调位置",
     "/ark/setting/desc/tweak_team": "微调队伍归属",
+    "/ark/setting/desc/tweak_ai_quality": "微调AI推理质量",
 
     "/ark/setting/tweak_hp/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
     "/ark/setting/tweak_hp/args/hp_change": "HP变化量（可为负） > ",
@@ -313,6 +356,8 @@ Expression = {
     "/ark/setting/tweak_place/args/new_place": "新位置 > ",
     "/ark/setting/tweak_team/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
     "/ark/setting/tweak_team/args/NewTeamID": "新的队伍编号 > ",
+    "/ark/setting/tweak_ai_quality/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新的推理质量级别 > ",
 
     "/ark/tweak/executing": "正在执行战前微调...",
     "/ark/tweak/complete": "战前微调完成！",
@@ -320,6 +365,7 @@ Expression = {
     "/ark/tweak/energy/success": "玩家$0的能量变化了$1 当前能量$2",
     "/ark/tweak/place/success": "玩家$0移动到位置$1",
     "/ark/tweak/team/success": "玩家$0已经设置为归属队伍$1",
+    "/ark/tweak/ai_quality/success": "玩家$0的推理质量已经设置为$1",
     "/ark/tweak/error/player-not-found": "错误 玩家$0不存在",
     "/ark/tweak/error/out-of-map": "错误 位置$0超出地图范围",
 
@@ -358,7 +404,7 @@ Expression = {
     '/act/4/price': "0",
     '/act/5/price': "1",
     '/act/6/price': "4",
-    '/act/7/price': "3",
+    '/act/7/price': "4",
     '/act/rl/price': "0",
     '/act/stt/price': "0",
     '/act/bk/price': "0",
@@ -473,6 +519,47 @@ Expression = {
     '/ark/setting/desc/wave_distance': '「能量波」的射程',
     '/ark/setting/desc/team_size': "每個AI隊伍的人數[1-各自為戰]",
     '/ark/setting/desc/assist_team': "第一個AI隊伍是否與人類合作？[0-No 1-Yes]",
+    '/ark/setting/desc/ai_quality': "AI的預設推理品質級別",
+
+    "/ark/setting/tweak-adding": "正在新增微調 $0",
+    "/ark/setting/tweak-added": "微調已新增 $0",
+    "/ark/setting/tweak-summary": "共配置了$0個戰前微調 ",
+    "/ark/setting/tweak-summary-item": "• $0 -> $1",
+    "/ark/setting/tweak-configured": "個已配置",
+
+    "/ark/setting/desc/tweak_hp": "微調生命值",
+    "/ark/setting/desc/tweak_energy": "微調能量",
+    "/ark/setting/desc/tweak_place": "微調位置",
+    "/ark/setting/desc/tweak_team": "微調隊伍歸屬",
+    "/ark/setting/desc/tweak_ai_quality": "微調AI推理品質",
+
+    "/ark/setting/tweak_hp/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_hp/args/hp_change": "HP變化量（可為負） > ",
+    "/ark/setting/tweak_energy/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_energy/args/energy_change": "能量變化量（可為負） > ",
+    "/ark/setting/tweak_place/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_place/args/new_place": "新位置 > ",
+    "/ark/setting/tweak_team/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_team/args/NewTeamID": "新的隊伍編號 > ",
+    "/ark/setting/tweak_ai_quality/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
+    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新的推理品質等級 > ",
+
+    "/ark/tweak/executing": "正在執行戰前微調...",
+    "/ark/tweak/complete": "戰前微調完成！",
+    "/ark/tweak/hp/success": "玩家$0的HP變化了$1，當前HP$2",
+    "/ark/tweak/energy/success": "玩家$0的能量變化了$1，當前能量$2",
+    "/ark/tweak/place/success": "玩家$0移動到位置$1",
+    "/ark/tweak/team/success": "玩家$0已設定為歸屬隊伍$1",
+    "/ark/tweak/ai_quality/success": "玩家$0的推理品質已設定為$1",
+    "/ark/tweak/error/player-not-found": "錯誤：找不到玩家$0",
+    "/ark/tweak/error/out-of-map": "錯誤：位置$0超出地圖範圍",
+
+    "/ark/setting/target-parsed": "✓ 已選擇$0個目標 ",
+    "/ark/setting/error-parse": "✗ 解析錯誤 $0",
+    "/ark/setting/tweak-added-batch": "✓ 微調已新增 $0（$1個目標）",
+
+
+
 },
 
 
@@ -505,7 +592,7 @@ Expression = {
     '/act/4/price': "0",
     '/act/5/price': "1",
     '/act/6/price': "4",
-    '/act/7/price': "3",
+    '/act/7/price': "4",
     '/act/rl/price': "0",
     '/act/stt/price': "0",
     '/act/bk/price': "0",
@@ -620,6 +707,46 @@ Expression = {
     '/ark/setting/desc/wave_distance': '「エネルギー波」の射程',
     '/ark/setting/desc/team_size': "AIチームの人数 [1 = 個人戦]",
     '/ark/setting/desc/assist_team': "最初のAIチームは人間と協力するか [0-No 1-Yes]",
+    '/ark/setting/desc/ai_quality': "AIのデフォルト推論品質レベル",
+
+
+    "/ark/setting/tweak-adding": "微調整を追加中: $0",
+    "/ark/setting/tweak-added": "微調整を追加しました: $0",
+    "/ark/setting/tweak-summary": "$0個の戦闘前微調整が設定されました。",
+    "/ark/setting/tweak-summary-item": "• $0 -> $1",
+    "/ark/setting/tweak-configured": "個設定済み",
+
+    "/ark/setting/desc/tweak_hp": "HPを微調整",
+    "/ark/setting/desc/tweak_energy": "エネルギーを微調整",
+    "/ark/setting/desc/tweak_place": "位置を微調整",
+    "/ark/setting/desc/tweak_team": "チーム所属を微調整",
+    "/ark/setting/desc/tweak_ai_quality": "AI思考品質を微調整",
+
+    "/ark/setting/tweak_hp/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
+    "/ark/setting/tweak_hp/args/hp_change": "HP変化量 (負数も可) > ",
+    "/ark/setting/tweak_energy/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
+    "/ark/setting/tweak_energy/args/energy_change": "エネルギー変化量 (負数も可) > ",
+    "/ark/setting/tweak_place/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
+    "/ark/setting/tweak_place/args/new_place": "新しい位置 > ",
+    "/ark/setting/tweak_team/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
+    "/ark/setting/tweak_team/args/NewTeamID": "新しいチームID > ",
+    "/ark/setting/tweak_ai_quality/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
+    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新しい思考品質レベル > ",
+
+    "/ark/tweak/executing": "戦闘前の微調整を実行中...",
+    "/ark/tweak/complete": "戦闘前の微調整が完了しました！",
+    "/ark/tweak/hp/success": "プレイヤー$0のHPが$1変化しました。現在のHP: $2",
+    "/ark/tweak/energy/success": "プレイヤー$0のエネルギーが$1変化しました。現在のエネルギー: $2",
+    "/ark/tweak/place/success": "プレイヤー$0が位置$1に移動しました。",
+    "/ark/tweak/team/success": "プレイヤー$0がチーム$1に割り当てられました。",
+    "/ark/tweak/ai_quality/success": "プレイヤー$0の思考品質が$1に設定されました。",
+    "/ark/tweak/error/player-not-found": "エラー: プレイヤー$0が見つかりません。",
+    "/ark/tweak/error/out-of-map": "エラー: 位置$0はマップの範囲外です。",
+
+    "/ark/setting/target-parsed": "✓ $0個のターゲットを選択しました。",
+    "/ark/setting/error-parse": "✗ パースエラー: $0",
+    "/ark/setting/tweak-added-batch": "✓ 微調整を追加しました: $0 ($1個のターゲット)",
+
 }
 
 }

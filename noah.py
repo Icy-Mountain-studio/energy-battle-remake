@@ -105,7 +105,7 @@ class IO():
                 res_org = explain(key, imp)
             else:
                 # Resolve path and get the expression template.
-                res_org = explain(self.exp[self.dealpath(key)], imp)
+                res_org = explain(self.get(key), imp)
 
             if res_org != "NONE":
                 indented_res = plus + res_org  # Result with indentation for logging/history.
@@ -180,14 +180,11 @@ class IO():
 
     def get(self, key):
         """A simple getter to retrieve an expression template using a resolved path."""
-        return self.exp[self.dealpath(key)]
+        try:
+            return self.exp[self.dealpath(key)]
+        except KeyError:
+            return "<haven't translated>"
 
-    def _typewriter_print(self, text: str):
-        """Prints text character by character with a typewriter effect."""
-        for char in text:
-            sys.stdout.write(char)
-            sys.stdout.flush()
-            time.sleep(self.typing_delay)
 
     def _typewriter_print(self, text: str):
         """Prints text character by character with a typewriter effect,
@@ -297,6 +294,7 @@ class Player():
         self.energy = 0        # Current amount of energy the player possesses.
         self.HP = 1            # Current health points.
         self.place = 0         # The player's current location/level in the game world.
+        self.ai_quality = 0    # The quality of the player's ai strategy logic.
         self.unable = []       # A blacklist of action names this player cannot use.
         self.real = True       # True if this is a human player, False for AI.
         self.outd = 0          # Total damage dealt by this player.
@@ -400,6 +398,7 @@ class Player():
             core.PlDict[origin].outd += decreasion
             self.HPlog.append([decreasion, origin, core.ui.get(f'/act/{act_key}/name')])
 
+
     def build_able(self, core):
         """
         Calculates which actions are currently available to this player based on game state.
@@ -412,40 +411,13 @@ class Player():
                    - A list of keys for all usable actions.
                    - A list of corresponding AI weights for those actions.
         """
-        # --- Environment variable generation for decision making ---
-        nearby_places = range(self.place - 1, self.place + 2)
-
-        # --- Safer calculation of nearby enemy population ---
-        side_enm = 0
-        for i in nearby_places:
-            place_pop_stats = core.status["pop"].get(i, {})
-            total_pop_at_place = len(place_pop_stats.get("sum", []))
-            my_team_pop_at_place = len(place_pop_stats.get(self.team, []))
-            side_enm += total_pop_at_place - my_team_pop_at_place
-
-        all_enm = core.status["pop"].get("all", 0)
-        enmK = side_enm / all_enm if all_enm > 0 else 0 # Ratio of nearby enemies to total enemies.
-
-        # --- Safer calculation of nearby enemy energy ---
-        side_eng = 0
-        for i in nearby_places:
-            place_eng_stats = core.status["energy"].get(i, {})
-            total_eng_at_place = place_eng_stats.get("sum", 0)
-            my_team_eng_at_place = place_eng_stats.get(self.team, 0)
-            side_eng += total_eng_at_place - my_team_eng_at_place
-
-        all_eng = core.status["energy"].get("all", 0)
-        engK = side_eng / all_eng if all_eng > 0 else 0 # Ratio of nearby enemy energy to total enemy energy.
 
         able = []
         ai_weights = []
 
-        # Context dictionary passed to action logic functions.
-        context = {
-            "self": self, "side_enm": side_enm, "all_enm": all_enm,
-            "enmK": enmK, "side_eng": side_eng, "all_eng": all_eng,
-            "engK": engK, "core": core
-        }
+        context = {"self": self, "core": core}
+        context = core.Exec("-build_able_context", "Player.build_able", context)
+
 
         # Iterate through all possible actions to see which are usable.
         for key, act in core.ActDict.items():
@@ -456,10 +428,13 @@ class Player():
 
             if (not is_human_only) and is_currently_able:
                 able.append(key)
+
                 # Calculate AI weight for this action.
-                ai_weights.append(act["ai"](context) * act["weight"])
+                index = min(len(act["ai"])-1, self.ai_quality)
+                ai_weights.append(act["ai"][index](context) * act["weight"])
 
         return able, ai_weights
+
 
 class Act():
     """
@@ -544,69 +519,16 @@ def PipeWorkFlow(PipeData, steps: list, args: tuple):
     return OutData
 
 
-def build_population_status(PipeData, args):
-    """
-    Builds population statistics required by the Noah Kernel.
-
-    Returns:
-        dict: {"pop": {place: {team: [ids], "sum": [ids]}, "all": total}}
-    """
-    core = args
-    pop_status = {}
-
-    for pl in core.PlDict.values():
-        if pl.place not in pop_status:
-            pop_status[pl.place] = {pl.team: [pl.id], "sum": [pl.id]}
-        elif pl.team not in pop_status[pl.place]:
-            pop_status[pl.place][pl.team] = [pl.id]
-            pop_status[pl.place]["sum"].append(pl.id)
-        else:
-            pop_status[pl.place][pl.team].append(pl.id)
-            pop_status[pl.place]["sum"].append(pl.id)
-
-    pop_status["all"] = len(core.PlDict)
-    PipeData["pop"] = pop_status
-
-    return PipeData
-
-
-def build_energy_status(PipeData, args):
-    """
-    Builds energy statistics for the Energy Battle game.
-    This is game-specific and not required by the Noah Kernel.
-
-    Returns:
-        dict: {"energy": {place: {team: total, "sum": total}, "all": total}}
-    """
-    core = args
-
-    energy_status = {}
-    all_energy = 0
-
-    for pl in core.PlDict.values():
-        if pl.place not in energy_status:
-            energy_status[pl.place] = {pl.team: pl.energy, "sum": pl.energy}
-        elif pl.team not in energy_status[pl.place]:
-            energy_status[pl.place][pl.team] = pl.energy
-            energy_status[pl.place]["sum"] = energy_status[pl.place].get("sum", 0) + pl.energy
-        else:
-            energy_status[pl.place][pl.team] += pl.energy
-            energy_status[pl.place]["sum"] += pl.energy
-
-        all_energy += pl.energy
-
-    energy_status["all"] = all_energy
-    PipeData["energy"] = energy_status
-
-    return PipeData
 
 
 default_cmd_table = {
+
     "-update_status": [
-        # Required by Noah for AI decision-making
-        build_population_status,
-        # Required by Noah for state queries
-        build_energy_status,
+
+    ],
+
+    "-build_able_context": [
+
     ],
 }
 
@@ -690,6 +612,7 @@ class Core():
         for i in range(self.BattleEnv["num"]):
             pl = Player(i + 1)
             pl.HP = self.BattleEnv["initHP"]
+            pl.ai_quality = self.BattleEnv["ai_quality"]
 
             if i + 1 > self.BattleEnv["real"]:
                 # This is an AI player.
@@ -702,6 +625,7 @@ class Core():
             else:
                 # This is a human player.
                 pl.team = 0
+                pl.ai_quality = 9999
 
             self.PlDict[i + 1] = pl
 
@@ -734,7 +658,7 @@ class Core():
         # Process AI players using `map` for a clean, parallel-ready structure.
         if ai_players:
             # Show progress bar for a large number of AIs.
-            show_progress = len(self.PlDict) >= 10000
+            show_progress = len(self.PlDict) >= 10000 or (self.BattleEnv["ai_quality"] > 0 and len(self.PlDict) >= 100)
             if show_progress:
                 print(f"{self.ui.get('/core/ai-dealing')}  {0.000:3.0f}%", end='\r', flush=True)
 
@@ -909,7 +833,11 @@ class Core():
             self.RaiseError(domain, f"Command not found: {cmd_name}")
             return PipeData
         else:
-            return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
+            try:
+                return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
+            except Exception as e:
+                self.RaiseError(domain, f"Kernel command '{cmd_name}' failed: {e}")
+                return {}
 
 
     def DealEvents(self):
@@ -920,10 +848,10 @@ class Core():
             return
 
         for event in self.EventBus:
-            # try:
-            event.happen(self)
-            # except Exception as e:
-            #     self.RaiseError("Core.DealEvents", f"Event {event.type} failed: {e}")
+            try:
+                event.happen(self)
+            except Exception as e:
+                self.RaiseError("Core.DealEvents", f"Event '{event.type}' failed: {e}")
 
         # Clear the EventBus
         self.EventBus.clear()

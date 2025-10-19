@@ -105,6 +105,7 @@ InitBattleEnv = {
     "wave_distance": 99999,    # Range of the 'Energy Wave' action (effectively infinite).
     "team_size": 1,   # Number of players per AI team (1 means free-for-all).
     "assist_team": 0, # Should the first AI team cooperate with humans? (0=No, 1=Yes).
+    "ai_quality": 0,
     "setting_options":  {
         "1": "num",
         "2": "real",
@@ -114,10 +115,12 @@ InitBattleEnv = {
         "6": "wave_distance",
         "7": "team_size",
         "8": "assist_team",
+        "9": "ai_quality",
         "t1": "tweak_hp",
         "t2": "tweak_energy",
         "t3": "tweak_place",
         "t4": "tweak_team",
+        "t5": "tweak_ai_quality",
     },
 
     # ===== New: tweak =====
@@ -128,6 +131,7 @@ InitBattleEnv = {
         "tweak_energy": ["target_id", "energy_change"],
         "tweak_place": ["target_id", "new_place"],
         "tweak_team": ["target_id", "NewTeamID"],
+        "tweak_ai_quality": ["target_id", "NewQualityLevel"],
     },
 }
 
@@ -202,6 +206,24 @@ def execute_team_tweak(PipeData, args):
         core.RaiseError("execute_team_tweak", f"Invalid parameters: {e}")
 
     return PipeData
+
+
+def execute_ai_quality_tweak(PipeData, args):
+    core = args
+    try:
+        target_id = int(PipeData["target_id"])
+        NewQualityLevel = int(PipeData["NewQualityLevel"])
+
+        if target_id in core.PlDict:
+            core.PlDict[target_id].ai_quality = NewQualityLevel
+            core.ui.out("/ark/tweak/ai_quality/success", imp=[target_id, NewQualityLevel])
+        else:
+            core.ui.out("/ark/tweak/error/player-not-found", imp=[target_id], color="RED")
+    except (ValueError, KeyError) as e:
+        core.RaiseError("execute_ai_quality_tweak", f"Invalid parameters: {e}")
+
+    return PipeData
+
 
 
 # --- Action Logic Functions ---
@@ -345,19 +367,37 @@ def shot_s(pl, core, auto):
             return (False, None)
 
     else: # --- AI Logic ---
-        # 1. Efficiently find a target from the pre-calculated status cache.
-        shotable = []
-        for i in range(s.place - 1, s.place + 2):
-            if i in core.status["pop"]:
-                shotable += core.status["pop"][i]["sum"]
 
-        target = pl.id
-        _tg = core.status["snap"][target]
-        # Ensure the AI doesn't target itself or a teammate.
-        while _tg[3] == pl.team and ((not pl.real) or target==pl.id):
-            target = noah.random.choice(shotable)
+        if s.ai_quality == 0:
+
+            # 1. Efficiently find a target from the pre-calculated status cache.
+            shotable = []
+            for i in range(s.place - 1, s.place + 2):
+                if i in core.status["pop"]:
+                    shotable += core.status["pop"][i]["sum"]
+
+            target = pl.id
             _tg = core.status["snap"][target]
-            shotable.remove(target)
+            # Ensure the AI doesn't target itself or a teammate.
+            while _tg[3] == pl.team and ((not pl.real) or target==pl.id):
+                target = noah.random.choice(shotable)
+                _tg = core.status["snap"][target]
+                shotable.remove(target)
+        else:
+
+            # 1. Use our helper function to find the optimal target.
+            # This re-calculates the best target, ensuring the AI acts on its decision.
+            context = {"self": s, "core": core}
+            context = core.Exec("-build_able_context", "shot_s", context)
+
+            best_target_pl, _ = _get_best_shot_target(context)
+
+            # If for some reason no target was found, abort.
+            if not best_target_pl:
+                # This can happen if there are no valid targets. Fallback to charging.
+                return (True, noah.Act(pl.id, "1"))
+            target = best_target_pl.id
+
 
         act = noah.Act(s.id, "2")
         act.lv = 3
@@ -379,7 +419,6 @@ def shot_s(pl, core, auto):
         act.target = int(target)
         act.seth = get_seth(s.place, core.status["snap"][target][2])
         act.channel = "shot-like"
-        act.dealed = []
         act.color = "RED"
         act.distant = core.BattleEnv["shot_distance"]
 
@@ -402,21 +441,21 @@ def firecount(myself, PipeData, core, act, target=False):
             if not target:
                 target = core.PlDict[cur_act.target]
 
-            if target.id not in cur_act.dealed:
-                is_miss = (cur_act.seth != get_seth(myself.place, target.place) or
-                           abs(myself.place - target.place) > cur_act.distant)
+            # if target.id > cur_act.ownerID:
+            is_miss = (cur_act.seth != get_seth(myself.place, target.place) or
+                       abs(myself.place - target.place) > cur_act.distant)
 
-                if is_miss:
-                    # The shot missed.
-                    PipeData["msg"].append([f"/act/{cur_act.key}/shot-miss", [myself.id, target.id, cur_act.lv]])
+            if is_miss:
+                # The shot missed.
+                PipeData["msg"].append([f"/act/{cur_act.key}/shot-miss", [myself.id, target.id, cur_act.lv]])
+            else:
+                # The shot hit.
+                PipeData["msg"].append([f"/act/{cur_act.key}/shot", [myself.id, target.id, cur_act.lv]])
+                if target.id not in PipeData["damage"]:
+                    PipeData["damage"][target.id] = cur_act.lv
                 else:
-                    # The shot hit.
-                    PipeData["msg"].append([f"/act/{cur_act.key}/shot", [myself.id, target.id, cur_act.lv]])
-                    if target.id not in PipeData["damage"]:
-                        PipeData["damage"][target.id] = cur_act.lv
-                    else:
-                        PipeData["damage"][target.id] += cur_act.lv
-                cur_act.dealed.append(target.id)
+                    PipeData["damage"][target.id] += cur_act.lv
+
     return PipeData
 
 def crossfire_evaluate(PipeData, args):
@@ -462,7 +501,7 @@ def crossfire_crash(PipeData, args):
             for pos in core.PlDict[playerID].acts:
                 cur_act = core.ActSign[core.ActDict[pos[0]]["priority"]][pos[0]][pos[1]]
                 # Check if the target is also performing a shot-like action back at the attacker.
-                if cur_act.channel == "shot-like" and not cur_act.acted and attacker.id not in cur_act.dealed:
+                if cur_act.channel == "shot-like" and not cur_act.acted:
                     if (cur_act.target is True or cur_act.target == attacker.id):
                         myself = core.PlDict[playerID]
                         is_miss = (cur_act.seth != get_seth(myself.place, attacker.place) or
@@ -476,7 +515,6 @@ def crossfire_crash(PipeData, args):
                             msg.append([f"/act/{cur_act.key}/crash", [crash_amount]])
                             PipeData["damage"][playerID] -= cur_act.lv
 
-                        cur_act.dealed.append(attacker.id)
                         cur_act.pay(core)
 
     PipeData["msg"] += msg
@@ -592,17 +630,60 @@ def move_s(pl, core, auto):
             except ValueError:
                 core.ui.out("./error-int", color="RED")
     else: # AI logic
-        ls = list(range(-core.ActDict["4"]["step"], core.ActDict["4"]["step"] + 1))
-        ls.remove(0) # AI should always move.
 
-        st = noah.random.choice(ls)
-        # Ensure the move is within map boundaries.
-        while abs(st + pl.place) > core.BattleEnv["map"]:
+        s = pl
+        random_select = False
+
+        if s.ai_quality > 0:
+            # --- Re-run the strategic evaluation to find the best move direction ---
+            context = {"self": s, "core": core}
+            context = core.Exec("-build_able_context", "move_s", context)
+
+            current_pos_context = context.copy()
+            offense_score_current = _get_best_shot_target(current_pos_context)[1]
+            defense_score_current = predictive_defend_ai(current_pos_context)
+            current_position_score = offense_score_current - (defense_score_current * 0.5)
+
+            best_move_delta = 0
+            best_new_position_score = current_position_score
+
+            possible_moves = [-1, 1]
+            for move_delta in possible_moves:
+                new_place = s.place + move_delta
+                if abs(new_place) > core.BattleEnv["map"]:
+                    continue
+
+                temp_s = noah.Player(s.id)
+                temp_s.id = s.id; temp_s.team = s.team; temp_s.place = new_place
+                temp_context = context.copy(); temp_context["self"] = temp_s
+
+                offense_score_new = _get_best_shot_target(temp_context)[1]
+                defense_score_new = predictive_defend_ai(temp_context)
+                new_score = offense_score_new - (defense_score_new * 0.5)
+
+                if new_score > best_new_position_score:
+                    best_new_position_score = new_score
+                    best_move_delta = move_delta
+                if best_move_delta == 0:
+                    random_select = True
+                else:
+                    st = best_move_delta
+        else:
+            random_select = True
+
+        if random_select:
+            ls = list(range(-core.ActDict["4"]["step"], core.ActDict["4"]["step"] + 1))
+            ls.remove(0) # AI should always move.
+
             st = noah.random.choice(ls)
+            # Ensure the move is within map boundaries.
+            while abs(st + pl.place) > core.BattleEnv["map"]:
+                st = noah.random.choice(ls)
 
         act = noah.Act(pl.id, "4")
         act.steps = st
         return (True, act)
+
 
 def blackhole_s(pl, core, auto):
     """Selection logic for the 'Black Hole' action."""
@@ -770,7 +851,6 @@ def wave_s(pl, core, auto):
     act.target = True # Indicates an AOE attack
     act.lv = 5
     act.channel = "shot-like"
-    act.dealed = []
     act.color = "CYAN"
     act.distant = core.BattleEnv["wave_distance"]
     return (True, act)
@@ -780,7 +860,7 @@ def wave_s(pl, core, auto):
 def charge_price(act): return -1
 def shot_price(act): return act.lv
 def reflect_price(act): return 1
-def blackhole_price(act): return 3
+def blackhole_price(act): return 4
 def wave_price(act): return 4
 def free_of_charge(act): return 0
 
@@ -799,7 +879,7 @@ def move_able(context):
 
 def blackhole_able(context):
     """Ability check for 'Black Hole'."""
-    return (context["self"].energy >= 3)
+    return (context["self"].energy >= 4)
 
 def reflect_able(context):
     """Ability check for 'Reflect'."""
@@ -813,17 +893,162 @@ def charge_ai(context):
     """AI weight for 'Charge'."""
     return min((100/(context["self"].energy+1))*3, 500)
 
+def advanced_charge_ai(context):
+    """Advanced AI's logic for charging. Becomes less willing to charge when aggressive."""
+    aggression = _calculate_aggression(context)
+    base_desire = min((100/(context["self"].energy+1))*3, 500)
+    return base_desire / aggression
+
 def shot_ai(context):
     """AI weight for 'Shoot'."""
     return context["self"].energy*50
+
+
+def _calculate_aggression(context: dict) -> float:
+    """
+    A self-contained helper function to calculate an AI's aggression level.
+    This acts as a "mood sensor" for the advanced AI.
+    Returns:
+        A multiplier where > 1.0 is aggressive, < 1.0 is defensive.
+    """
+    self = context["self"]
+    core = context["core"]
+
+    my_team_energy = 0
+    enemy_team_energy = 0
+    my_team_population = 0
+    enemy_team_population = 0
+
+    for pl in core.PlDict.values():
+        if pl.team == self.team:
+            my_team_energy += pl.energy
+            my_team_population += 1
+        else:
+            enemy_team_energy += pl.energy
+            enemy_team_population += 1
+
+    if enemy_team_energy == 0: enemy_team_energy = 1
+    if enemy_team_population == 0: enemy_team_population = 1
+
+    energy_ratio = my_team_energy / enemy_team_energy
+    population_ratio = my_team_population / enemy_team_population
+
+    base_multiplier = (energy_ratio * 0.7) + (population_ratio * 0.3)
+
+    aggression = max(0.5, min(2.0, base_multiplier))
+
+    return aggression
+
+
+
+def _get_best_shot_target(context):
+    """
+    A helper function to find the best target for a shot-like action.
+    It returns the target player object and its calculated priority score.
+    """
+    s = context["self"]
+    core = context["core"]
+    best_target = None
+    max_score = -1
+
+    # Find all potential targets within one level (shot's default range)
+    shotable_players_ids = []
+    for i in range(s.place - 1, s.place + 2):
+        if i in core.status["pop"]:
+            for pl_id in core.status["pop"][i]["sum"]:
+                # Cannot target teammates (unless they are human) or self
+                if core.PlDict[pl_id].team == s.team and not core.PlDict[pl_id].real:
+                    continue
+                if pl_id == s.id:
+                    continue
+                shotable_players_ids.append(pl_id)
+
+    if not shotable_players_ids:
+        return None, 0
+
+
+    for target_id in shotable_players_ids:
+        target_pl = core.PlDict[target_id]
+        hp_score = 60 / (target_pl.HP + 0.1)
+        energy_score = (target_pl.energy ** 1.5) * 25
+        human_bonus = 75 if target_pl.real else 0
+
+        score = hp_score + energy_score + human_bonus
+
+        if score > max_score:
+            max_score = score
+            best_target = target_pl
+
+    return best_target, max_score
+
 
 def defend_ai(context):
     """AI weight for 'Defend'."""
     return context["engK"]*context["engK"]*100+10
 
+
 def move_ai(context):
     """AI weight for 'Move'."""
     return context["enmK"]*context["engK"]*50+10
+
+
+def advanced_shot_ai(context):
+    aggression = _calculate_aggression(context)
+    s = context["self"]
+    if s.energy < 1: return 0
+    _, best_target_score = _get_best_shot_target(context)
+    return (best_target_score * s.energy) * aggression
+
+
+def predictive_defend_ai(context, ignore_hp=False):
+    aggression = _calculate_aggression(context)
+
+    s = context["self"]
+    core = context["core"]
+    base_threat = (context.get("enmK", 0.5) * context.get("engK", 0.5)) * 150 + 10
+    specific_threat = 0
+    for i in range(s.place - 1, s.place + 2):
+        if i in core.status["pop"]:
+            for pl_id in core.status["pop"][i]["sum"]:
+                if core.PlDict[pl_id].team == s.team or pl_id == s.id: continue
+                enemy_pl = core.PlDict[pl_id]
+                if enemy_pl.energy >= wave_price(None): specific_threat += 300
+                if enemy_pl.energy >= 3: specific_threat += enemy_pl.energy * 20
+    incoming_threat_score = base_threat + specific_threat
+    if ignore_hp: return incoming_threat_score
+    hp_multiplier = 2.5 / (s.HP + 0.5)
+    final_score = incoming_threat_score * hp_multiplier
+    return final_score / aggression
+
+def strategic_move_ai(context):
+    aggression = _calculate_aggression(context)
+    MOVE_INCENTIVE_THRESHOLD = 150
+
+    s = context["self"]
+    core = context["core"]
+    current_pos_context = context.copy()
+    offense_score_current = _get_best_shot_target(current_pos_context)[1]
+    defense_threat_current = predictive_defend_ai(current_pos_context, ignore_hp=True)
+    current_position_score = offense_score_current - (defense_threat_current * 0.7)
+    best_new_position_score = -9999
+    possible_moves = [-1, 1]
+    for move_delta in possible_moves:
+        new_place = s.place + move_delta
+        if abs(new_place) > core.BattleEnv["map"]: continue
+        temp_s = noah.Player(s.id); temp_s.id = s.id; temp_s.team = s.team; temp_s.place = new_place
+        temp_context = context.copy(); temp_context["self"] = temp_s
+        offense_score_new = _get_best_shot_target(temp_context)[1]
+        defense_threat_new = predictive_defend_ai(temp_context, ignore_hp=True)
+        new_score = offense_score_new - (defense_threat_new * 0.7)
+        if new_score > best_new_position_score: best_new_position_score = new_score
+    move_incentive = best_new_position_score - current_position_score
+    if move_incentive > MOVE_INCENTIVE_THRESHOLD:
+        return move_incentive / aggression
+    else:
+        return 0
+
+
+
 
 def blackhole_ai(context):
     """AI weight for 'Black Hole'."""
@@ -836,6 +1061,12 @@ def reflect_ai(context):
 def wave_ai(context):
     """AI weight for 'Energy Wave'."""
     return context["self"].energy*100
+
+def advanced_wave_ai(context):
+    """Advanced AI's logic for Energy Wave. Becomes more willing when aggressive."""
+    aggression = _calculate_aggression(context)
+    base_desire = context["self"].energy * 100
+    return base_desire * aggression
 
 def reflect_s(pl, core, auto):
     """Selection logic for 'Reflect'."""
@@ -932,55 +1163,55 @@ ArkUI.out("./welcome", color="YELLOW")
 BaseActDict = {
     "1": { # Charge
         "price": charge_price, "priority": 0, "able": able_forever,
-        "human_only": False, "ai": charge_ai, "weight": 1,
+        "human_only": False, "ai": [charge_ai, advanced_charge_ai], "weight": 1,
         "s_exec": charge_s, "d_exec": [charge_d],
     },
     "2": { # Shoot
         "price": shot_price, "priority": -1, "able": shot_able,
-        "human_only": False, "ai": shot_ai, "weight": 1,
+        "human_only": False, "ai": [shot_ai, advanced_shot_ai], "weight": 1,
         "s_exec": shot_s,
         "d_exec": [crossfire_evaluate, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
     },
     "3": { # Defend
         "price": free_of_charge, "priority": 2, "able": able_forever,
-        "human_only": False, "ai": defend_ai, "weight": 1,
+        "human_only": False, "ai": [defend_ai, predictive_defend_ai], "weight": 1,
         "s_exec": defend_s, "d_exec": [defend_d],
     },
     "4": { # Move
         "price": free_of_charge, "priority": 1, "able": move_able,
-        "human_only": False, "ai": move_ai, "weight": 1,
+        "human_only": False, "ai": [move_ai, strategic_move_ai], "weight": 1,
         "s_exec": move_s, "d_exec": [move_d],
         "step": 1 # Custom parameter for this action
     },
     "5": { # Reflect
         "price": reflect_price, "priority": 2, "able": reflect_able,
-        "human_only": False, "ai": reflect_ai, "weight": 1,
+        "human_only": False, "ai": [reflect_ai, predictive_defend_ai], "weight": 1,
         "s_exec": reflect_s, "d_exec": [reflect_d],
     },
     "6": { # Energy Wave
         "price": wave_price, "priority": -1, "able": wave_able,
-        "human_only": False, "ai": wave_ai, "weight": 1,
+        "human_only": False, "ai": [wave_ai, advanced_wave_ai], "weight": 1,
         "s_exec": wave_s,
         "d_exec": [crossfire_wave_eval, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
     },
     "7": { # Black Hole
         "price": blackhole_price, "priority": 9999, "able": blackhole_able,
-        "human_only": False, "ai": blackhole_ai, "weight": 1,
+        "human_only": False, "ai": [blackhole_ai], "weight": 1,
         "s_exec": blackhole_s, "d_exec": [blackhole_d],
     },
     "rl": { # Show Rules
         "price": free_of_charge, "priority": 0, "able": able_forever,
-        "human_only": True, "ai": None, "weight": 0,
+        "human_only": True, "ai": [None], "weight": 0,
         "s_exec": ShowRules_s, "d_exec": [],
     },
     "stt": { # Show Status
         "price": free_of_charge, "priority": 0, "able": able_forever,
-        "human_only": True, "ai": None, "weight": 0,
+        "human_only": True, "ai": [None], "weight": 0,
         "s_exec": ShowStatus_s, "d_exec": [],
     },
     "bk": { # Surrender/Break
         "price": free_of_charge, "priority": 0, "able": able_forever,
-        "human_only": True, "ai": None, "weight": 0,
+        "human_only": True, "ai": [None], "weight": 0,
         "s_exec": break_s, "d_exec": [],
     },
 }
@@ -1296,6 +1527,9 @@ EnvProcessors = {
     "assist_team": {
         "steps": [validate_int_and_non_negative, apply_and_display]
     },
+    "ai_quality": {
+        "steps": [validate_int_and_non_negative, apply_and_display]
+    },
     "tweak_hp": {
         "steps": [create_tweak_event, display_tweak_result]
     },
@@ -1306,6 +1540,9 @@ EnvProcessors = {
         "steps": [create_tweak_event, display_tweak_result]
     },
     "tweak_team": {
+        "steps": [create_tweak_event, display_tweak_result]
+    },
+    "tweak_ai_quality": {
         "steps": [create_tweak_event, display_tweak_result]
     },
 }
@@ -1441,7 +1678,6 @@ def Setting():
     ArkUI.workdir = "/ark/"
 
 
-
 def build_snapshot_status(PipeData, args):
     """
     Builds a snapshot of all players' current state.
@@ -1458,6 +1694,110 @@ def build_snapshot_status(PipeData, args):
     return PipeData
 
 
+def build_able_enmK(PipeData, args):
+    self = PipeData["self"]
+    core = PipeData["core"]
+
+    # --- Environment variable generation for decision making ---
+    nearby_places = range(self.place - 1, self.place + 2)
+
+    # --- Safer calculation of nearby enemy population ---
+    side_enm = 0
+    for i in nearby_places:
+        place_pop_stats = core.status["pop"].get(i, {})
+        total_pop_at_place = len(place_pop_stats.get("sum", []))
+        my_team_pop_at_place = len(place_pop_stats.get(self.team, []))
+        side_enm += total_pop_at_place - my_team_pop_at_place
+
+    all_enm = core.status["pop"].get("all", 0)
+    enmK = side_enm / all_enm if all_enm > 0 else 0 # Ratio of nearby enemies to total enemies.
+
+    PipeData["side_enm"] = side_enm
+    PipeData["all_enm"] = all_enm
+    PipeData["nearby_places"] = nearby_places
+    PipeData["enmK"] = enmK
+
+    return PipeData
+
+
+def build_able_engK(PipeData, args):
+    """Safer calculation of nearby enemy energy"""
+    self = PipeData["self"]
+    core = PipeData["core"]
+    nearby_places = PipeData["nearby_places"]
+
+    side_eng = 0
+    for i in nearby_places:
+        place_eng_stats = core.status["energy"].get(i, {})
+        total_eng_at_place = place_eng_stats.get("sum", 0)
+        my_team_eng_at_place = place_eng_stats.get(self.team, 0)
+        side_eng += total_eng_at_place - my_team_eng_at_place
+
+    all_eng = core.status["energy"].get("all", 0)
+    engK = side_eng / all_eng if all_eng > 0 else 0 # Ratio of nearby enemy energy to total enemy energy.
+
+    PipeData["side_eng"] = side_eng
+    PipeData["engK"] = engK
+    return PipeData
+
+
+def build_population_status(PipeData, args):
+    """
+    Builds population statistics required by the Noah Kernel.
+
+    Returns:
+        dict: {"pop": {place: {team: [ids], "sum": [ids]}, "all": total}}
+    """
+    core = args
+    pop_status = {}
+
+    for pl in core.PlDict.values():
+        if pl.place not in pop_status:
+            pop_status[pl.place] = {pl.team: [pl.id], "sum": [pl.id]}
+        elif pl.team not in pop_status[pl.place]:
+            pop_status[pl.place][pl.team] = [pl.id]
+            pop_status[pl.place]["sum"].append(pl.id)
+        else:
+            pop_status[pl.place][pl.team].append(pl.id)
+            pop_status[pl.place]["sum"].append(pl.id)
+
+    pop_status["all"] = len(core.PlDict)
+    PipeData["pop"] = pop_status
+
+    return PipeData
+
+
+def build_energy_status(PipeData, args):
+    """
+    Builds energy statistics for the Energy Battle game.
+    This is game-specific and not required by the Noah Kernel.
+
+    Returns:
+        dict: {"energy": {place: {team: total, "sum": total}, "all": total}}
+    """
+    core = args
+
+    energy_status = {}
+    all_energy = 0
+
+    for pl in core.PlDict.values():
+        if pl.place not in energy_status:
+            energy_status[pl.place] = {pl.team: pl.energy, "sum": pl.energy}
+        elif pl.team not in energy_status[pl.place]:
+            energy_status[pl.place][pl.team] = pl.energy
+            energy_status[pl.place]["sum"] = energy_status[pl.place].get("sum", 0) + pl.energy
+        else:
+            energy_status[pl.place][pl.team] += pl.energy
+            energy_status[pl.place]["sum"] += pl.energy
+
+        all_energy += pl.energy
+
+    energy_status["all"] = all_energy
+    PipeData["energy"] = energy_status
+
+    return PipeData
+
+
 if not noah.os.path.exists("./logs"):
     noah.os.mkdir("logs")
 
@@ -1467,7 +1807,18 @@ CmdTable["-tweak_hp"] = [execute_hp_tweak]
 CmdTable["-tweak_energy"] = [execute_energy_tweak]
 CmdTable["-tweak_place"] = [execute_place_tweak]
 CmdTable["-tweak_team"] = [execute_team_tweak]
-CmdTable["-update_status"].append(build_snapshot_status)
+CmdTable["-tweak_ai_quality"] = [execute_ai_quality_tweak]
+CmdTable["-update_status"] += [
+    build_population_status,
+    build_energy_status,
+    build_snapshot_status,
+]
+
+CmdTable["-build_able_context"] += [
+    build_able_enmK,
+    build_able_engK,
+]
+
 
 
 def Gaming():
@@ -1560,7 +1911,7 @@ def Gaming():
 
 def _exit():
     """Function to exit the game gracefully."""
-    ArkUI.typing_delay *= 10
+    ArkUI.typing_delay = 0.1
     ArkUI.out("./exit")
     return True
 
