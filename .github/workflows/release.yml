@@ -42,12 +42,9 @@ jobs:
         run: |
           choco install upx -y
 
-      - name: Install Nuitka
-        run: |
-          python -m pip install --upgrade pip
-          pip install nuitka ordered-set zstandard
 
-      - name: Build with Nuitka
+      - name: Build with Nuitka (Linux)
+        if: matrix.platform == 'linux'
         run: |
           python -m nuitka \
             --standalone \
@@ -68,11 +65,36 @@ jobs:
             --enable-plugin=anti-bloat \
             ark.py
 
+      - name: Build with Nuitka (Windows)
+        if: matrix.platform == 'windows'
+        shell: cmd
+        run: |
+          python -m nuitka ^
+            --standalone ^
+            --onefile ^
+            --assume-yes-for-downloads ^
+            --lto=yes ^
+            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} ^
+            --include-data-files=localize.py=localize.py ^
+            --nofollow-import-to=tkinter ^
+            --nofollow-import-to=unittest ^
+            --nofollow-import-to=test ^
+            --nofollow-import-to=distutils ^
+            --nofollow-import-to=setuptools ^
+            --nofollow-import-to=pip ^
+            --remove-output ^
+            --python-flag=no_site ^
+            --python-flag=-OO ^
+            --enable-plugin=anti-bloat ^
+            ark.py
+
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}
           path: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
