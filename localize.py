@@ -109,7 +109,7 @@ Expression = {
     '/ark/game-over-nobody': f"{C['CYAN']}\n///// GAME OVER: NO SURVIVORS /////{C['RESET']}\n",
     '/ark/game-over': f"{C['CYAN']}\n///// GAME OVER: PLAYER $0 WINS! /////{C['RESET']}\n",
     "/ark/game-over-by-team": f"{C['CYAN']}\n///// GAME OVER: TEAM $0 WINS! /////{C['RESET']}\n",
-    '/ark/welcome': "# Energy Battle - Remake 1.2-6 #\n",
+    '/ark/welcome': "# Energy Battle - Remake 1.2-7 #\n",
 
     '/act/1/rule': f"{C['YELLOW']}Charge{C['RESET']} - {C['WHITE']}Increase your energy by 1.{C['RESET']}",
     '/act/3/rule': f"{C['CYAN']}Defend{C['RESET']} - {C['WHITE']}Enter a defensive state for this turn. You cannot be harmed by attack actions.{C['RESET']}",
@@ -296,7 +296,7 @@ Expression = {
     '/ark/game-over-nobody': f"{C['CYAN']}\n///// 游戏结束 无人存活 /////{C['RESET']}\n",
     '/ark/game-over': f"{C['CYAN']}\n///// 游戏结束 玩家$0胜利 /////{C['RESET']}\n",
     "/ark/game-over-by-team": f"{C['CYAN']}\n///// 游戏结束 队伍$0胜利 /////{C['RESET']}\n",
-    '/ark/welcome': "# 能量之战-重制版 1.2-6 #\n",
+    '/ark/welcome': "# 能量之战-重制版 1.2-7 #\n",
 
     '/act/1/rule': f"{C['YELLOW']}充能{C['RESET']} - {C['WHITE']}把你的能量增加1点{C['RESET']}",
     '/act/3/rule': f"{C['CYAN']}防御{C['RESET']} - {C['WHITE']}在本回合内进入防御状态 攻击类行动无法伤害你{C['RESET']}",
@@ -482,7 +482,7 @@ Expression = {
     '/ark/game-over-nobody': f"{C['CYAN']}\n///// 遊戲結束 無人存活 /////{C['RESET']}\n",
     '/ark/game-over': f"{C['CYAN']}\n///// 遊戲結束 玩家$0勝利 /////{C['RESET']}\n",
     "/ark/game-over-by-team": f"{C['CYAN']}\n///// 遊戲結束 隊伍$0勝利 /////{C['RESET']}\n",
-    '/ark/welcome': "# 能量之戰-重製版 1.2-6 #\n",
+    '/ark/welcome': "# 能量之戰-重製版 1.2-7 #\n",
 
     '/act/1/rule': f"{C['YELLOW']}充能{C['RESET']} - {C['WHITE']}把你的能量增加1點{C['RESET']}",
     '/act/3/rule': f"{C['CYAN']}防禦{C['RESET']} - {C['WHITE']}在本回合內進入防禦狀態，攻擊類行動無法傷害你{C['RESET']}",
@@ -670,7 +670,7 @@ Expression = {
     '/ark/game-over-nobody': f"{C['CYAN']}\n///// ゲームオーバー：生存者なし /////{C['RESET']}\n",
     '/ark/game-over': f"{C['CYAN']}\n///// ゲームオーバー：プレイヤー$0の勝利！ /////{C['RESET']}\n",
     "/ark/game-over-by-team": f"{C['CYAN']}\n///// ゲームオーバー：チーム$0の勝利！ /////{C['RESET']}\n",
-    '/ark/welcome': "# エネルギーバトル - リメイク 1.2-6 #\n",
+    '/ark/welcome': "# エネルギーバトル - リメイク 1.2-7 #\n",
 
     '/act/1/rule': f"{C['YELLOW']}チャージ{C['RESET']} - {C['WHITE']}エネルギーを1増加させます。{C['RESET']}",
     '/act/3/rule': f"{C['CYAN']}防御{C['RESET']} - {C['WHITE']}このターンの間、防御状態になります。攻撃アクションによるダメージを受けません。{C['RESET']}",
