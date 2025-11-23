@@ -437,7 +437,7 @@ def firecount(myself, PipeData, core, act, target=False):
         cur_act = core.ActSign[core.ActDict[pos[0]]["priority"]][pos[0]][pos[1]]
         cur_act.pay(core)
 
-        if cur_act.channel == "shot-like" and not cur_act.acted:
+        if cur_act.channel == "shot-like":
             if not target:
                 target = core.PlDict[cur_act.target]
 
@@ -501,7 +501,7 @@ def crossfire_crash(PipeData, args):
             for pos in core.PlDict[playerID].acts:
                 cur_act = core.ActSign[core.ActDict[pos[0]]["priority"]][pos[0]][pos[1]]
                 # Check if the target is also performing a shot-like action back at the attacker.
-                if cur_act.channel == "shot-like" and not cur_act.acted:
+                if cur_act.channel == "shot-like":
                     if (cur_act.target is True or cur_act.target == attacker.id):
                         myself = core.PlDict[playerID]
                         is_miss = (cur_act.seth != get_seth(myself.place, attacker.place) or
