@@ -190,7 +190,6 @@ def execute_place_tweak(PipeData, args):
 
     return PipeData
 
-
 def execute_team_tweak(PipeData, args):
     core = args
     try:
@@ -863,7 +862,7 @@ def reflect_price(act): return 1
 def blackhole_price(act): return 4
 def wave_price(act): return 4
 def free_of_charge(act): return 0
- 
+
 
 def able_forever(context):
     """Ability check for actions that are always available."""
@@ -1950,4 +1949,5 @@ if __name__ == "__main__":
 
         if exit_game:
             break
+
 
