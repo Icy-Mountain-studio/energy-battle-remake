@@ -69,19 +69,19 @@ class IO():
         self.indent = 0     # Tracks the current indentation level for formatted output.
         self.typing_delay = delay  # Delay for the typewriter effect. Set to 0 to disable.
 
-    def out(self, key, mode="sh", real_end="\n", dr=False, imp=[], indent=True, color=None):
+    def out(self, key, mode="sh", real_end="\n", directly=False, imp=[], indent=True, color=None, speed_stability=3):
         """
         Outputs content to specified channels after evaluating it.
 
         Args:
-            key (str or list): The key(s) for the expression template in `self.exp`, or the direct content if `dr` is True.
+            key (str or list): The key(s) for the expression template in `self.exp`, or the direct content if `directly` is True.
             mode (str): A string specifying the output channels.
                         's': standard output (console)
                         'h': history list
                         'l': log list
                         Can be combined, e.g., "shl".
             real_end (str): The character to print at the very end of the output.
-            dr (bool): Direct render. If True, treats `key` as the content itself rather than a key to `self.exp`.
+            directly (bool): Direct render. If True, treats `key` as the content itself rather than a key to `self.exp`.
             imp (list): A list of values to be imported into the expression template for substitution.
             indent (bool or int): If True, uses the current `self.indent`. If an int, uses that as the indentation level.
                                  If False, no indentation is applied.
@@ -90,47 +90,47 @@ class IO():
         if isinstance(key, list):
             # If `key` is a list, output each item in it recursively.
             for k in key:
-                self.out(k, mode, real_end, dr, imp, indent, color)
+                self.out(k, mode, real_end, directly, imp, indent, color, speed_stability)
         else:
             # Determine indentation prefix.
             if indent is True:
-                plus = (self.indent * 4) * " "
+                indent_spaces = (self.indent * 4) * " "
             elif isinstance(indent, int):
-                plus = (indent * 4) * " "
+                indent_spaces = (indent * 4) * " "
             else:
-                plus = ""
+                indent_spaces = ""
 
             # Evaluate the final string to be printed.
-            if dr:
-                res_org = explain(key, imp)
+            if directly:
+                orinal_result = explain(key, imp)
             else:
                 # Resolve path and get the expression template.
-                res_org = explain(self.get(key), imp)
+                orinal_result = explain(self.get(key), imp)
 
-            if res_org != "NONE":
-                indented_res = plus + res_org  # Result with indentation for logging/history.
-                full_format_res = indented_res
-                colored_res = res_org
+            if orinal_result != "NONE":
+                indented_result = indent_spaces + orinal_result  # Result with indentation for logging/history.
+                full_format_result = indented_result
+                colored_result = orinal_result
 
                 if color:
-                    full_format_res = self.colors.get(color, "") + indented_res + self.colors["RESET"]
-                    colored_res = self.colors.get(color, "") + res_org + self.colors["RESET"]
+                    full_format_result = self.colors.get(color, "") + indented_result + self.colors["RESET"]
+                    colored_result = self.colors.get(color, "") + orinal_result + self.colors["RESET"]
 
                 # Output to the specified channels.
                 if "s" in mode:
-                    if plus:
-                        print(plus, end="")
+                    if indent_spaces:
+                        print(indent_spaces, end="")
                     if self.typing_delay > 0:
-                        self._typewriter_print(colored_res)
+                        self._typewriter_print(colored_result, speed_stability)
                         print(end=real_end)
                     else:
-                        print(colored_res, end=real_end)
+                        print(colored_result, end=real_end)
 
                 if "h" in mode:
-                    self.history.append(full_format_res)
+                    self.history.append(full_format_result)
                 if "l" in mode:
                     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                    self.logs.append(f"{timestamp}\n{res_org}\n")
+                    self.logs.append(f"{timestamp}\n{orinal_result}\n")
 
 
     def write_log(self):
@@ -141,7 +141,7 @@ class IO():
         self.logs.clear()
 
 
-    def inp(self, key, mode="sh", dr=False, imp=[], indent=True, color=None):
+    def inp(self, key, mode="sh", directly=False, imp=[], indent=True, color=None):
         """
         Prompts the user for input after printing a message, and returns the result.
         The user's response is appended to the message in the history/log.
@@ -152,7 +152,7 @@ class IO():
         Returns:
             str: The user's input.
         """
-        self.out(key, mode, real_end="", dr=dr, imp=imp, indent=indent, color=color)
+        self.out(key, mode, real_end="", directly=directly, imp=imp, indent=indent, color=color)
         res = input()
         if "h" in mode and self.history:
             self.history[-1] += res
@@ -186,13 +186,14 @@ class IO():
             return "<haven't translated>"
 
 
-    def _typewriter_print(self, text: str):
+    def _typewriter_print(self, text: str, speed_stability=0):
         """Prints text character by character with a typewriter effect,
         skipping ANSI escape codes."""
         ansi_pattern = re.compile(r'\033\[[0-9;]*m')
 
+        length = len(text)
         i = 0
-        while i < len(text):
+        while i < length:
             match = ansi_pattern.match(text, i)
             if match:
                 sys.stdout.write(match.group())
@@ -201,8 +202,12 @@ class IO():
             else:
                 sys.stdout.write(text[i])
                 sys.stdout.flush()
-                time.sleep(self.typing_delay)
                 i += 1
+                if self.typing_delay:
+                    if speed_stability:
+                        time.sleep(self.typing_delay / i**(1/speed_stability))
+                    else:
+                        time.sleep(self.typing_delay)
 
 
 def explain(template_str: str, values: list) -> str:
@@ -240,37 +245,6 @@ def explain(template_str: str, values: list) -> str:
     # The parentheses (\d+) create a capture group for the digits.
     return re.sub(r'\$(\d+)', replacer, template_str)
 
-def decide(able_actions: list, weights: list, real: bool):
-    """
-    Performs a weighted random selection from a list of actions.
-    For a real player, it suggests the action with the highest weight.
-
-    Args:
-        able_actions (list): A list of available actions, e.g., ['attack', 'defend'].
-        weights (list): A list of corresponding numerical weights, e.g., [10, 80].
-        real (bool): If True, indicates a human player. If False, an AI.
-
-    Returns:
-        str: The chosen action.
-        None: If the list of actions is empty.
-    """
-    # Robustness check to prevent crashing on empty lists.
-    if not able_actions:
-        return None
-
-    if not real:
-        # AI player: make a weighted random choice.
-        # random.choices returns a list, so we take the first element.
-        try:
-            chosen_action = random.choices(population=able_actions, weights=weights, k=1)[0]
-        except ValueError:
-            # This can happen if weights are invalid (e.g., all zero).
-            return False
-    else:
-        # Human player: suggest the action with the highest weight.
-        chosen_action = able_actions[weights.index(max(weights))]
-
-    return chosen_action
 
 def table(data, exp, spl="\n"):
     """
@@ -361,8 +335,8 @@ class Player():
                 # Set the working directory for IO to the context of the selected action.
                 core.ui.workdir = f"/act/{selection}"
 
-            # Execute the selection function (`s_exec`) of the chosen action.
-            quit_selecting, new_act = core.ActDict[selection]["s_exec"](self, core, auto)
+            # Execute the selection function (`selecting_exec`) of the chosen action.
+            quit_selecting, new_act = core.ActDict[selection]["selecting_exec"](self, core, auto)
 
             if new_act:
                 result.append(new_act)
@@ -421,7 +395,6 @@ class Player():
 
         # Iterate through all possible actions to see which are usable.
         for key, act in core.ActDict.items():
-            if key == 'cp': continue # Skip special keys.
 
             is_human_only = act["human_only"]
             is_currently_able = (key not in self.unable) and act["able"](context)
@@ -459,7 +432,7 @@ class Act():
             # The action's execution logic is added as a new step in its designated channel's stream.
             core.channels[self.channel] = PipeWorkFlow(
                 PipeData=core.channels.get(self.channel, None),
-                steps=core.ActDict[self.key]["d_exec"],
+                steps=core.ActDict[self.key]["dealing_exec"],
                 args=(self, core)
             )
             self.acted = True
@@ -489,15 +462,32 @@ def SelectAct_WorkerFunc(task):
         # This player has no available actions.
         return [[], [player.id]] # Returns empty acts, and player ID for potential "no action" log.
 
-    decision_key = decide(able_actions, ai_weights, player.real)
+    if not able_actions:
+        # None of the action can this player do, which lets to death
+        decision_key = None
+
+    if not player.real:
+        # AI player: make a weighted random choice.
+        # random.choices returns a list, so we take the first element.
+        try:
+            decision_key = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
+        except ValueError:
+            # This can happen if weights are invalid (e.g., all zero).
+            return False
+    else:
+        # Human player: suggest the action with the highest weight.
+        decision_key = able_actions[ai_weights.index(max(ai_weights))]
+
+    
     if decision_key is None:
         return [[], [player.id]]
     elif decision_key is False:
-        core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", dr=True)
+        core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", directly=True)
     else:
         result_acts.extend(player.select(core, decision_key))
 
     return [result_acts, []]
+
 
 def PipeWorkFlow(PipeData, steps: list, args: tuple):
     """
@@ -565,8 +555,8 @@ class Core():
         #   "able": (func) A function returning a bool, checking if the action is usable.
         #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
         #   "ai": (func) A function that returns a numerical weight for AI decision-making.
-        #   "s_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
-        #   "d_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
+        #   "selecting_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
+        #   "dealing_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
         self.ActDict = ActDict
 
         # The current round number.
@@ -709,7 +699,7 @@ class Core():
 
     def DealAct(self):
 
-        self.ui.out(self.debug_snapshot(), mode="l", dr=True)
+        self.ui.out(self.debug_snapshot(), mode="l", directly=True)
 
         """Processes all selected actions for the round, in descending order of priority."""
         self.org_delay = self.ui.typing_delay
@@ -787,7 +777,7 @@ class Core():
         self.deaths = []
         self.channels = {}
 
-    def ls_acts(self):
+    def ls_acts(self, typing_delay=0, speed_stability=2):
         """Displays the list of available actions in a nicely formatted table."""
         self.ui.workdir = "/act/"
 
@@ -804,12 +794,10 @@ class Core():
         )
 
         final_list = title + table_str + "\n"
-
-        # Temporarily speed up printing for the list.
-        original_delay = self.ui.typing_delay
-        self.ui.typing_delay /= 30
-        self.ui.out(final_list, dr=True)
-        self.ui.typing_delay = original_delay
+        original_typing_delay = self.ui.typing_delay
+        self.ui.typing_delay = typing_delay
+        self.ui.out(final_list, directly=True, speed_stability=speed_stability)
+        self.ui.typing_delay = original_typing_delay
 
     def refresh(self):
         """Resets all data for the current battle session to start fresh."""
@@ -824,7 +812,7 @@ class Core():
         mode = "l"
         if self.debug:
             mode += "s"
-        self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, dr=True, color="RED")
+        self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, directly=True, color="RED")
         self.ui.write_log()
 
 
@@ -857,11 +845,11 @@ class Core():
         self.EventBus.clear()
 
 
-    def debug_snapshot(self, title="Game State"):
+    def debug_snapshot(self, title="Game State", split_str_lenth=30):
         msg = []
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
         msg.append(f"{title} - Round {self.rounds}")
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
 
         msg.append(f"Alive: {len(self.PlDict)} players")
         for pid, pl in self.PlDict.items():
@@ -873,21 +861,21 @@ class Core():
                 for act_key, acts in self.ActSign[priority].items():
                     msg.append(f"  Priority {priority} / ActCode {act_key}: {len(acts)} actions")
 
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
 
         return "\n".join(msg)
 
 
-    def battle_env_snapshot(self, title="Battle Environment"):
+    def battle_env_snapshot(self, title="Battle Environment", split_str_lenth=30):
         msg = []
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
         msg.append(f"{title}s")
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
 
         for env_key, env_value in self.BattleEnv.items():
             msg.append(f"\t{env_key} -> {env_value}")
 
-        msg.append(f"{'='*60}")
+        msg.append(f"{'='*split_str_lenth}")
 
         return "\n".join(msg)
 

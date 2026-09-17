@@ -3,7 +3,7 @@ from noah import C
 Expression = {
 
 "en_us": {
-    '/ark/round-title': "Round $0\n"+'-'*10,
+    '/ark/round-title': "Round $0\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}Player $0 {C['GREEN']}[HP $1 Energy $2 Pos $3]{C['RESET']}\nSuggest $4 >  ",
@@ -12,7 +12,7 @@ Expression = {
     '/core/actlist-title': f"Available Actions\n-------------\n   Action  {C['CYAN']}(Cost){C['RESET']}\n",
     '/core/ai-dealing': f"{C['MAGENTA']}AI is making a decision...",
     '/core/ai-completed': f"AI decision complete.{C['RESET']}",
-    '/core/typing-delay': "0.5",
+    '/core/typing-delay': "10",
 
     '/act/1/name': f"{C['YELLOW']}Charge{C['RESET']}",
     '/act/2/name': f"{C['RED']}Shoot{C['RESET']}",
@@ -66,6 +66,7 @@ Expression = {
     '/act/2/error-no-seth': "That firing direction does not exist.",
 
     '/act/3/dealed': f"{C['CYAN']}Player $0 is defending for one turn.{C['RESET']}",
+    '/act/3/prohibited': f"{C['RED']}Cannot defend for more than $0 consecutive turns{C['RESET']}",
 
     '/act/4/ask': f"Enter levels to move up (negative to move down) {C['GREEN']}[-$0~$0]{C['RESET']} ",
     '/act/4/dealed': f"{C['GREEN']}Player $0 moved $1 level(s) and arrived at level $2.{C['RESET']}",
@@ -135,8 +136,6 @@ Expression = {
     '/ark/setting/error-invalid-choice': f"{C['RED']}Invalid option. Please choose again.{C['RESET']}",
     '/ark/setting/error-not-int': f"{C['RED']}Invalid input. An integer is required.{C['RESET']}",
     '/ark/setting/error-non-negative': "This parameter must be a non-negative number.",
-    '/ark/setting/error-real-num-mismatch': "Number of human players ($0) cannot exceed total players ($1). It has been auto-corrected.",
-    '/ark/setting/error-map-range': "Map size (current: $0) must be a positive integer. Recommended range is 1 to 10.",
 
     '/ark/setting/desc/num': "Total number of players",
     '/ark/setting/desc/real': "Number of human players",
@@ -146,51 +145,15 @@ Expression = {
     '/ark/setting/desc/wave_distance': 'Range of "Energy Wave"',
     '/ark/setting/desc/team_size': "Players per AI team [1 = free-for-all]",
     '/ark/setting/desc/assist_team': "Should the first AI team cooperate with humans? [0-No 1-Yes]",
-
-    "/ark/setting/tweak-adding": "Adding tweak: $0",
-    "/ark/setting/tweak-added": "Tweak added: $0",
-    "/ark/setting/tweak-summary": "$0 pre-battle tweaks configured.",
-    "/ark/setting/tweak-summary-item": "• $0 -> $1",
-    "/ark/setting/tweak-configured": " configured.",
-
-    "/ark/setting/desc/tweak_hp": "Tweak HP",
-    "/ark/setting/desc/tweak_energy": "Tweak Energy",
-    "/ark/setting/desc/tweak_place": "Tweak Position",
-    "/ark/setting/desc/tweak_team": "Tweak Team Assignment",
-    "/ark/setting/desc/tweak_ai_quality": "Tweak AI Reasoning Quality",
     '/ark/setting/desc/ai_quality': "Default AI Quality Level",
-
-    "/ark/setting/tweak_hp/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
-    "/ark/setting/tweak_hp/args/hp_change": "HP change (can be negative) > ",
-    "/ark/setting/tweak_energy/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
-    "/ark/setting/tweak_energy/args/energy_change": "Energy change (can be negative) > ",
-    "/ark/setting/tweak_place/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
-    "/ark/setting/tweak_place/args/new_place": "New position > ",
-    "/ark/setting/tweak_team/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
-    "/ark/setting/tweak_team/args/NewTeamID": "New team ID > ",
-    "/ark/setting/tweak_ai_quality/args/target_id": "Target Player ID(s) (Supports: single/comma-separated/range)\n    e.g., 1 or 1,3,5 or 1-5 or 1,3-5,8\n  > ",
-    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "New reasoning quality level > ",
-
-    "/ark/tweak/executing": "Executing pre-battle tweaks...",
-    "/ark/tweak/complete": "Pre-battle tweaks complete!",
-    "/ark/tweak/hp/success": "Player $0's HP changed by $1. Current HP: $2",
-    "/ark/tweak/energy/success": "Player $0's energy changed by $1. Current energy: $2",
-    "/ark/tweak/place/success": "Player $0 moved to position $1",
-    "/ark/tweak/team/success": "Player $0 has been assigned to team $1",
-    "/ark/tweak/ai_quality/success": "Player $0's reasoning quality has been set to $1",
-    "/ark/tweak/error/player-not-found": "Error: Player $0 not found",
-    "/ark/tweak/error/out-of-map": "Error: Position $0 is outside the map boundaries",
-
-    "/ark/setting/target-parsed": "✓ $0 target(s) selected.",
-    "/ark/setting/error-parse": "✗ Parse error: $0",
-    "/ark/setting/tweak-added-batch": "✓ Tweak added: $0 ($1 targets)",
+    '/ark/setting/desc/max_consecutive_defend_times': "Max consecutive defend turns (0 to disable)",
 
 
 
 },
 
 "zh_cn": {
-    '/ark/round-title': "第$0回合\n"+'-'*10,
+    '/ark/round-title': "第$0回合\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}玩家$0 {C['GREEN']}[血量$1 能量$2 位置$3]{C['RESET']}\n推荐$4 >  ",
@@ -199,7 +162,7 @@ Expression = {
     '/core/actlist-title': f"可选行动\n-------\n   行动  {C['CYAN']}(价格){C['RESET']}\n",
     '/core/ai-dealing': f"{C['MAGENTA']}AI正在决策...",
     '/core/ai-completed': f"AI决策已完成.{C['RESET']}",
-    '/core/typing-delay': "1",
+    '/core/typing-delay': "10",
 
     '/act/1/name': f"{C['YELLOW']}充能{C['RESET']}",
     '/act/2/name': f"{C['RED']}射击{C['RESET']}",
@@ -253,6 +216,7 @@ Expression = {
     '/act/2/error-no-seth': "没有那个发射方向喔",
 
     '/act/3/dealed': f"{C['CYAN']}玩家$0防御了一回合{C['RESET']}",
+    '/act/3/prohibited': f"{C['RED']}无法连续防御超过$0回合{C['RESET']}",
 
     '/act/4/ask': f"请输入想要上升（负数则是下降）的层数{C['GREEN']}[-$0~$0]{C['RESET']} ",
     '/act/4/dealed': f"{C['GREEN']}玩家$0移动了$1层并抵达了第$2层{C['RESET']}",
@@ -322,8 +286,6 @@ Expression = {
     '/ark/setting/error-invalid-choice': f"{C['RED']}没有这个选项... 请重新选择{C['RESET']}",
     '/ark/setting/error-not-int': f"{C['RED']}输入无效 需要整数{C['RESET']}",
     '/ark/setting/error-non-negative': "这个参数必须是非负数",
-    '/ark/setting/error-real-num-mismatch': "真人玩家数量($0)不能超过总玩家数量($1) 已自动修正",
-    '/ark/setting/error-map-range': "地图大小(当前$0)必须是正整数 且建议范围在1到10之间",
 
     '/ark/setting/desc/num': "总玩家数量",
     '/ark/setting/desc/real': "真人玩家数量",
@@ -334,49 +296,12 @@ Expression = {
     '/ark/setting/desc/team_size': "每个AI队伍的人数[1-各自为战]",
     '/ark/setting/desc/assist_team': "第一个AI队伍是否与人类合作？[0-No 1-Yes]",
     '/ark/setting/desc/ai_quality': "AI的默认推理质量级别",
-
-
-    "/ark/setting/tweak-adding": "正在添加微调 $0",
-    "/ark/setting/tweak-added": "微调已添加 $0",
-    "/ark/setting/tweak-summary": "共配置了$0个战前微调 ",
-    "/ark/setting/tweak-summary-item": "• $0 -> $1",
-    "/ark/setting/tweak-configured": "个已配置",
-
-    "/ark/setting/desc/tweak_hp": "微调生命值",
-    "/ark/setting/desc/tweak_energy": "微调能量",
-    "/ark/setting/desc/tweak_place": "微调位置",
-    "/ark/setting/desc/tweak_team": "微调队伍归属",
-    "/ark/setting/desc/tweak_ai_quality": "微调AI推理质量",
-
-    "/ark/setting/tweak_hp/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_hp/args/hp_change": "HP变化量（可为负） > ",
-    "/ark/setting/tweak_energy/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_energy/args/energy_change": "能量变化量（可为负） > ",
-    "/ark/setting/tweak_place/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_place/args/new_place": "新位置 > ",
-    "/ark/setting/tweak_team/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_team/args/NewTeamID": "新的队伍编号 > ",
-    "/ark/setting/tweak_ai_quality/args/target_id": "目标玩家ID（支持：单个/逗号分隔/范围）\n    示例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新的推理质量级别 > ",
-
-    "/ark/tweak/executing": "正在执行战前微调...",
-    "/ark/tweak/complete": "战前微调完成！",
-    "/ark/tweak/hp/success": "玩家$0的HP变化了$1 当前HP$2",
-    "/ark/tweak/energy/success": "玩家$0的能量变化了$1 当前能量$2",
-    "/ark/tweak/place/success": "玩家$0移动到位置$1",
-    "/ark/tweak/team/success": "玩家$0已经设置为归属队伍$1",
-    "/ark/tweak/ai_quality/success": "玩家$0的推理质量已经设置为$1",
-    "/ark/tweak/error/player-not-found": "错误 玩家$0不存在",
-    "/ark/tweak/error/out-of-map": "错误 位置$0超出地图范围",
-
-    "/ark/setting/target-parsed": "✓ 已选择$0个目标 ",
-    "/ark/setting/error-parse": "✗ 解析错误 $0",
-    "/ark/setting/tweak-added-batch": "✓ 微调已添加 $0（$1个目标）",
+    '/ark/setting/desc/max_consecutive_defend_times': "最大连续防御次数(为零时禁止防御)",
 
 },
 
 "zh_tw": {
-    '/ark/round-title': "第$0回合\n"+'-'*10,
+    '/ark/round-title': "第$0回合\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}玩家$0 {C['GREEN']}[血量$1 能量$2 位置$3]{C['RESET']}\n推薦$4 >  ",
@@ -439,6 +364,7 @@ Expression = {
     '/act/2/error-no-seth': "沒有那個發射方向喔",
 
     '/act/3/dealed': f"{C['CYAN']}玩家$0防禦了一回合{C['RESET']}",
+    '/act/3/prohibited': f"{C['RED']}無法連續防禦超過$0回合{C['RESET']}",
 
     '/act/4/ask': f"請輸入想要上升（負數則是下降）的層數{C['GREEN']}[-$0~$0]{C['RESET']} ",
     '/act/4/dealed': f"{C['GREEN']}玩家$0移動了$1層並抵達了第$2層{C['RESET']}",
@@ -508,8 +434,6 @@ Expression = {
     '/ark/setting/error-invalid-choice': f"{C['RED']}沒有這個選項... 請重新選擇{C['RESET']}",
     '/ark/setting/error-not-int': f"{C['RED']}輸入無效，需要整數{C['RESET']}",
     '/ark/setting/error-non-negative': "這個參數必須是非負數",
-    '/ark/setting/error-real-num-mismatch': "真人玩家數量($0)不能超過總玩家數量($1)，已自動修正",
-    '/ark/setting/error-map-range': "地圖大小(當前$0)必須是正整數，且建議範圍在1到10之間",
 
     '/ark/setting/desc/num': "總玩家數量",
     '/ark/setting/desc/real': "真人玩家數量",
@@ -520,43 +444,7 @@ Expression = {
     '/ark/setting/desc/team_size': "每個AI隊伍的人數[1-各自為戰]",
     '/ark/setting/desc/assist_team': "第一個AI隊伍是否與人類合作？[0-No 1-Yes]",
     '/ark/setting/desc/ai_quality': "AI的預設推理品質級別",
-
-    "/ark/setting/tweak-adding": "正在新增微調 $0",
-    "/ark/setting/tweak-added": "微調已新增 $0",
-    "/ark/setting/tweak-summary": "共配置了$0個戰前微調 ",
-    "/ark/setting/tweak-summary-item": "• $0 -> $1",
-    "/ark/setting/tweak-configured": "個已配置",
-
-    "/ark/setting/desc/tweak_hp": "微調生命值",
-    "/ark/setting/desc/tweak_energy": "微調能量",
-    "/ark/setting/desc/tweak_place": "微調位置",
-    "/ark/setting/desc/tweak_team": "微調隊伍歸屬",
-    "/ark/setting/desc/tweak_ai_quality": "微調AI推理品質",
-
-    "/ark/setting/tweak_hp/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_hp/args/hp_change": "HP變化量（可為負） > ",
-    "/ark/setting/tweak_energy/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_energy/args/energy_change": "能量變化量（可為負） > ",
-    "/ark/setting/tweak_place/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_place/args/new_place": "新位置 > ",
-    "/ark/setting/tweak_team/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_team/args/NewTeamID": "新的隊伍編號 > ",
-    "/ark/setting/tweak_ai_quality/args/target_id": "目標玩家ID（支援：單個/逗號分隔/範圍）\n    範例 1或1,3,5或1-5或1,3-5,8\n  > ",
-    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新的推理品質等級 > ",
-
-    "/ark/tweak/executing": "正在執行戰前微調...",
-    "/ark/tweak/complete": "戰前微調完成！",
-    "/ark/tweak/hp/success": "玩家$0的HP變化了$1，當前HP$2",
-    "/ark/tweak/energy/success": "玩家$0的能量變化了$1，當前能量$2",
-    "/ark/tweak/place/success": "玩家$0移動到位置$1",
-    "/ark/tweak/team/success": "玩家$0已設定為歸屬隊伍$1",
-    "/ark/tweak/ai_quality/success": "玩家$0的推理品質已設定為$1",
-    "/ark/tweak/error/player-not-found": "錯誤：找不到玩家$0",
-    "/ark/tweak/error/out-of-map": "錯誤：位置$0超出地圖範圍",
-
-    "/ark/setting/target-parsed": "✓ 已選擇$0個目標 ",
-    "/ark/setting/error-parse": "✗ 解析錯誤 $0",
-    "/ark/setting/tweak-added-batch": "✓ 微調已新增 $0（$1個目標）",
+    '/ark/setting/desc/max_consecutive_defend_times': "最大連續防禦次數(為零時禁止防禦)",
 
 
 
@@ -564,7 +452,7 @@ Expression = {
 
 
 "ja_jp": {
-    '/ark/round-title': "第$0ラウンド\n"+'-'*10,
+    '/ark/round-title': "第$0ラウンド\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}プレイヤー$0 {C['GREEN']}[HP $1 エネルギー $2 位置 $3]{C['RESET']}\n推奨 $4 >  ",
@@ -627,6 +515,7 @@ Expression = {
     '/act/2/error-no-seth': "その射撃方向は存在しません。",
 
     '/act/3/dealed': f"{C['CYAN']}プレイヤー$0はこのターン防御している。{C['RESET']}",
+    '/act/3/prohibited': f"{C['RED']}連続で$0ターンを超えて防御することはできません{C['RESET']}",
 
     '/act/4/ask': f"移動する階層数を入力してください（負数で下降）{C['GREEN']}[-$0～$0]{C['RESET']} ",
     '/act/4/dealed': f"{C['GREEN']}プレイヤー$0は$1階層移動し、階層$2に到達した。{C['RESET']}",
@@ -696,8 +585,6 @@ Expression = {
     '/ark/setting/error-invalid-choice': f"{C['RED']}無効な選択です。もう一度お選びください。{C['RESET']}",
     '/ark/setting/error-not-int': f"{C['RED']}無効な入力です。整数が必要です。{C['RESET']}",
     '/ark/setting/error-non-negative': "このパラメータは負でない数値である必要があります。",
-    '/ark/setting/error-real-num-mismatch': "人間プレイヤーの数($0)は総プレイヤー数($1)を超えることはできません。自動的に修正されました。",
-    '/ark/setting/error-map-range': "マップサイズ(現在値: $0)は正の整数である必要があります。推奨範囲は1から10です。",
 
     '/ark/setting/desc/num': "総プレイヤー数",
     '/ark/setting/desc/real': "人間プレイヤーの数",
@@ -708,44 +595,7 @@ Expression = {
     '/ark/setting/desc/team_size': "AIチームの人数 [1 = 個人戦]",
     '/ark/setting/desc/assist_team': "最初のAIチームは人間と協力するか [0-No 1-Yes]",
     '/ark/setting/desc/ai_quality': "AIのデフォルト推論品質レベル",
-
-
-    "/ark/setting/tweak-adding": "微調整を追加中: $0",
-    "/ark/setting/tweak-added": "微調整を追加しました: $0",
-    "/ark/setting/tweak-summary": "$0個の戦闘前微調整が設定されました。",
-    "/ark/setting/tweak-summary-item": "• $0 -> $1",
-    "/ark/setting/tweak-configured": "個設定済み",
-
-    "/ark/setting/desc/tweak_hp": "HPを微調整",
-    "/ark/setting/desc/tweak_energy": "エネルギーを微調整",
-    "/ark/setting/desc/tweak_place": "位置を微調整",
-    "/ark/setting/desc/tweak_team": "チーム所属を微調整",
-    "/ark/setting/desc/tweak_ai_quality": "AI思考品質を微調整",
-
-    "/ark/setting/tweak_hp/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
-    "/ark/setting/tweak_hp/args/hp_change": "HP変化量 (負数も可) > ",
-    "/ark/setting/tweak_energy/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
-    "/ark/setting/tweak_energy/args/energy_change": "エネルギー変化量 (負数も可) > ",
-    "/ark/setting/tweak_place/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
-    "/ark/setting/tweak_place/args/new_place": "新しい位置 > ",
-    "/ark/setting/tweak_team/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
-    "/ark/setting/tweak_team/args/NewTeamID": "新しいチームID > ",
-    "/ark/setting/tweak_ai_quality/args/target_id": "対象プレイヤーID (単一/カンマ区切り/範囲指定可)\n    例: 1 または 1,3,5 または 1-5 または 1,3-5,8\n  > ",
-    "/ark/setting/tweak_ai_quality/args/NewQualityLevel": "新しい思考品質レベル > ",
-
-    "/ark/tweak/executing": "戦闘前の微調整を実行中...",
-    "/ark/tweak/complete": "戦闘前の微調整が完了しました！",
-    "/ark/tweak/hp/success": "プレイヤー$0のHPが$1変化しました。現在のHP: $2",
-    "/ark/tweak/energy/success": "プレイヤー$0のエネルギーが$1変化しました。現在のエネルギー: $2",
-    "/ark/tweak/place/success": "プレイヤー$0が位置$1に移動しました。",
-    "/ark/tweak/team/success": "プレイヤー$0がチーム$1に割り当てられました。",
-    "/ark/tweak/ai_quality/success": "プレイヤー$0の思考品質が$1に設定されました。",
-    "/ark/tweak/error/player-not-found": "エラー: プレイヤー$0が見つかりません。",
-    "/ark/tweak/error/out-of-map": "エラー: 位置$0はマップの範囲外です。",
-
-    "/ark/setting/target-parsed": "✓ $0個のターゲットを選択しました。",
-    "/ark/setting/error-parse": "✗ パースエラー: $0",
-    "/ark/setting/tweak-added-batch": "✓ 微調整を追加しました: $0 ($1個のターゲット)",
+    '/ark/setting/desc/max_consecutive_defend_times': "最大連続防御回数(0で防御不可)",
 
 }
 

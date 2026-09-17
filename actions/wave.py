@@ -1,0 +1,127 @@
+import noah
+from actions.act_utils import wave_price, _calculate_aggression, get_direction, firecount
+from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final
+
+
+def crossfire_wave_eval(PipeData, args):
+    """Pipeline Step 1 (for Wave): Evaluate hits on all players in the path."""
+    act, core = args
+    myself = core.PlDict[act.ownerID]
+
+    # This function initiates the data stream for a wave action.
+    PipeData = {"msg": [], "damage": {}}
+    PipeData["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
+    PipeData["msg"].append(["/share/endl", []])
+
+    for pl in core.PlDict.values():
+        is_target = ((pl.real and pl != myself) or myself.team != pl.team) and \
+                        get_direction(myself.place, pl.place) == act.seth
+        if is_target:
+            PipeData = firecount(myself, PipeData, core, act, pl)
+
+    PipeData["msg"].append(["/share/endl", []])
+    return PipeData
+
+
+
+def auto_AOEseth(pl, core):
+    """
+    AI helper to determine the optimal direction for an AOE attack.
+    It scans the battlefield to find the direction with the most enemies.
+    """
+    tree_seth = [0, 0, 0]  # [-1 (down), 0 (straight), 1 (up)]
+    for place, pls in core.status["pop"].items():
+        if place != "all":
+            if place > pl.place:  # Above player
+                tree_seth[2] += len(pls["sum"])
+                if not pl.real:
+                    tree_seth[2] -= len(pls.get(pl.team, []))
+            elif place == pl.place:  # Same level
+                tree_seth[1] += len(pls["sum"])
+                if not pl.real:
+                    tree_seth[1] -= len(pls.get(pl.team, []))
+            else:  # Below player
+                tree_seth[0] += len(pls["sum"])
+                if not pl.real:
+                    tree_seth[0] -= len(pls.get(pl.team, []))
+
+    return tree_seth.index(max(tree_seth)) - 1
+
+
+def wave_s(pl, core, auto):
+    """Selection logic for the 'Energy Wave' action."""
+    act = noah.Act(pl.id, "6")
+
+    if pl.energy < core.ActDict["6"]["price"](act):
+        if not auto:
+            core.ui.indent += 1
+            core.ui.out(["/share/poor", "/share/endl"], color='MAGENTA')
+            core.ui.indent -= 1
+        else:
+            core.RaiseError("wave_s", f"Player {
+                            pl.id} can't afford wave but selected it")
+        return (False, None)
+
+    elif not auto:  # Human Logic
+        core.ui.indent += 1
+        while True:
+            seth = core.ui.inp('./ask-seth')
+            if seth == " ":  # Cancel option
+                core.ui.out(["./cancel", "/share/endl"])
+                core.ui.indent -= 1
+                return (False, None)
+            try:
+                if seth != "":
+                    if int(seth) not in [-1, 0, 1]:
+                        core.ui.out("./error-no-seth")
+                        continue
+                else:  # Auto-calculate direction
+                    seth = auto_AOEseth(pl, core)
+                    core.ui.out("./auto-seth", imp=[seth])
+            except ValueError:
+                core.ui.out("./error-int-or-empty")
+                continue
+            core.ui.out('/share/endl')
+            break
+
+        act.seth = int(seth)
+        core.ui.typing_delay *= 10
+        core.ui.out('./has-sent')
+        core.ui.typing_delay /= 10
+        core.ui.indent -= 1
+
+    elif auto:  # AI Logic
+        act.seth = auto_AOEseth(pl, core)
+
+    # Set properties for the resolution pipeline.
+    act.target = True  # Indicates an AOE attack
+    act.lv = 5
+    act.channel = "shot-like"
+    act.color = "CYAN"
+    act.distant = core.BattleEnv["wave_distance"]
+    return (True, act)
+
+
+def wave_ai(context):
+    """AI weight for 'Energy Wave'."""
+    return context["self"].energy*100
+
+
+def wave_able(context):
+    """Ability check for 'Energy Wave'."""
+    return (context["self"].energy >= 4)
+
+
+def advanced_wave_ai(context):
+    """Advanced AI's logic for Energy Wave. Becomes more willing when aggressive."""
+    aggression = _calculate_aggression(context)
+    base_desire = context["self"].energy * 100
+    return base_desire * aggression
+
+ActionProperties = {  # Energy Wave
+    "price": wave_price, "priority": -1, "able": wave_able,
+    "human_only": False, "ai": [wave_ai, advanced_wave_ai], "weight": 1,
+    "selecting_exec": wave_s,
+    "dealing_exec": [crossfire_wave_eval, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
+}
+
