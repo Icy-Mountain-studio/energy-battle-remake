@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/actions/ShowStatus.py
+"""
+
 from actions.act_utils import able_forever, free_of_charge
 
 def ShowStatus_selecting(pl, core, auto):

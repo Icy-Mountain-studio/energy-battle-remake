@@ -1,6 +1,11 @@
+"""
+/Energy-Battle-Remake/actions/wave.py
+"""
+
 import noah
+from actions.act_utils import summarize_crossfire_shots_msg, summarize_crossfire_defend_msg, summarize_crossfire_hurt_msg, summarize_crossfire_misses_msg, summarize_crossfire_reflect_msg, deliver_messages
 from actions.act_utils import wave_price, _calculate_aggression, get_direction, firecount
-from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final
+from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_do_damage
 
 
 def crossfire_wave_eval(PipeData, args):
@@ -9,17 +14,20 @@ def crossfire_wave_eval(PipeData, args):
     myself = core.PlDict[act.ownerID]
 
     # This function initiates the data stream for a wave action.
-    PipeData = {"msg": [], "damage": {}}
+    PipeData = {"msg": [], "damage": {}, "signatures": {}, "target": act.target, "statistics": {"shots":{}, "misses":{}, "defences":{}, "reflect":{}}}
     PipeData["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
-    PipeData["msg"].append(["/share/endl", []])
 
     for pl in core.PlDict.values():
         is_target = ((pl.real and pl != myself) or myself.team != pl.team) and \
                         get_direction(myself.place, pl.place) == act.seth
         if is_target:
-            PipeData = firecount(myself, PipeData, core, act, pl)
+            PipeData["target"] = pl.id
+            PipeData = firecount(core, act, myself, PipeData)
 
     PipeData["msg"].append(["/share/endl", []])
+    if not PipeData["damage"]:
+        PipeData["msg"] = []
+
     return PipeData
 
 
@@ -48,7 +56,7 @@ def auto_AOEseth(pl, core):
     return tree_seth.index(max(tree_seth)) - 1
 
 
-def wave_s(pl, core, auto):
+def wave_selecting(pl, core, auto):
     """Selection logic for the 'Energy Wave' action."""
     act = noah.Act(pl.id, "6")
 
@@ -98,7 +106,11 @@ def wave_s(pl, core, auto):
     act.lv = 5
     act.channel = "shot-like"
     act.color = "CYAN"
+    act.AOE = True
     act.distant = core.BattleEnv["wave_distance"]
+    act.attacked_players = []
+    act.pay(core)
+    
     return (True, act)
 
 
@@ -121,7 +133,18 @@ def advanced_wave_ai(context):
 ActionProperties = {  # Energy Wave
     "price": wave_price, "priority": -1, "able": wave_able,
     "human_only": False, "ai": [wave_ai, advanced_wave_ai], "weight": 1,
-    "selecting_exec": wave_s,
-    "dealing_exec": [crossfire_wave_eval, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
+    "selecting_exec": wave_selecting,
+    "dealing_exec": [
+        crossfire_wave_eval,
+        crossfire_crash,
+        crossfire_reflect,
+        crossfire_defend,
+        crossfire_do_damage,
+        summarize_crossfire_shots_msg,
+        summarize_crossfire_defend_msg,
+        summarize_crossfire_reflect_msg,
+        summarize_crossfire_hurt_msg,
+        deliver_messages
+        ],
 }
 

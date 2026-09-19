@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/actions/charge.py
+"""
+
 import noah
 from actions.act_utils import able_forever, _calculate_aggression
 
@@ -8,21 +12,26 @@ from actions.act_utils import able_forever, _calculate_aggression
 
 def charge_selecting(pl, core, auto):
     """Selection logic for the 'Charge' action."""
-    return (True, noah.Act(pl.id, "1"))
+    act = noah.Act(pl.id, "1")
+    act.pay(core)
+    act.energy_should_have = pl.energy
+    
+    if pl.real:
+        core.ui.typing_delay *= 5
+        core.ui.out(["./dealed", "/share/endl"], imp=[pl.id, act.energy_should_have])
+        core.ui.typing_delay /= 5
+        noah.time.sleep(0.3)
+
+    return (True, act)
 
 
 def charge_dealing(PipeData, args):
     """Resolution logic for the 'Charge' action."""
     act, core = args
-    act.pay(core)
     pl = core.PlDict[act.ownerID]
 
-    if pl.real:
-        core.ui.typing_delay = core.org_delay*5
-    core.ui.out("./dealed", imp=[act.ownerID, core.PlDict[act.ownerID].energy])
-    if pl.real:
-        core.ui.typing_delay = 0
-        noah.time.sleep(0.3)
+    if not pl.real:
+        core.ui.out("./dealed", imp=[act.ownerID, act.energy_should_have])
 
     return None
 

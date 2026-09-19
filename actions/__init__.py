@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/actions/__init__.py
+"""
+
 import noah
 from actions import charge, shot, defend, move, reflect, wave, blackhole, ShowStatus, ShowRules, breaking
 

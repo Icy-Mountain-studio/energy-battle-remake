@@ -1,4 +1,8 @@
 """
+/Energy-Battle-Remake/noah.py
+"""
+
+"""
 The Noah Kernel: A turn-based game engine.
 Originally spun off from the development of the game 'Energy Battle'.
 
@@ -286,7 +290,7 @@ class Player():
         # Format: [[action_key<str>, action_sign_index<int>], ...]
         self.acts = []
 
-    def select(self, core, decision=None):
+    def select(self, core):
         """
         Allows the player to select an action, which generates and returns Act objects.
         This method handles the selection logic for both human and AI players.
@@ -298,15 +302,28 @@ class Player():
         Returns:
             list: A list of `Act` objects created from the player's selection.
         """
-        auto = not self.real
         result = []
+        if self.real:
+            core.ls_acts()
 
-        while True:
+        while len(result) < core.BattleEnv["amount_of_actions_per_round"]:
+            auto = not self.real
+            able_actions, ai_weights = self.build_able(core)
+            if not able_actions:
+                # No actions avaliable
+                core.deaths.append(self.id)
+                break
+
             if self.real:
-                # Prompt human player for input.
-                prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name")]
+                decision = able_actions[ai_weights.index(max(ai_weights))]
 
-                selection = core.ui.inp('/core/ask-for-act', imp=prompt_imp)
+                if core.BattleEnv["amount_of_actions_per_round"] > 1:
+                    # Prompt human player for input.
+                    prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name"), len(result), core.BattleEnv["amount_of_actions_per_round"]]
+                    selection = core.ui.inp('/core/ask-for-act-multi', imp=prompt_imp)
+                else:
+                    prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name")]
+                    selection = core.ui.inp('/core/ask-for-act', imp=prompt_imp)
 
                 if selection == "":
                     # If human player presses Enter, accept the suggested decision.
@@ -329,7 +346,12 @@ class Player():
                 core.ui.out('/share/endl')
             else:
                 # AI player uses the pre-determined decision.
-                selection = decision
+                # selection = decision
+                try:
+                    selection = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
+                except ValueError:
+                    core.deaths.append(self.id)
+                    break
 
             if core.ui:
                 # Set the working directory for IO to the context of the selected action.
@@ -340,11 +362,15 @@ class Player():
 
             if new_act:
                 result.append(new_act)
+
             elif not self.real:
                 core.RaiseError("Player.select", f"AI Player {self.id} didn't get any act object from selected act {selection}")
 
-            if quit_selecting:
+            if core.exit_game:
                 break
+
+            if quit_selecting:
+                continue
             elif not self.real:
                 core.RaiseError("Player.select", f"Act {selection} let P{self.id}(AI) go into selection loop")
                 break
@@ -399,7 +425,7 @@ class Player():
             is_human_only = act["human_only"]
             is_currently_able = (key not in self.unable) and act["able"](context)
 
-            if (not is_human_only) and is_currently_able:
+            if not is_human_only and is_currently_able:
                 able.append(key)
 
                 # Calculate AI weight for this action.
@@ -461,30 +487,31 @@ def SelectAct_WorkerFunc(task):
     if not able_actions:
         # This player has no available actions.
         return [[], [player.id]] # Returns empty acts, and player ID for potential "no action" log.
-
-    if not able_actions:
-        # None of the action can this player do, which lets to death
-        decision_key = None
-
-    if not player.real:
-        # AI player: make a weighted random choice.
-        # random.choices returns a list, so we take the first element.
-        try:
-            decision_key = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
-        except ValueError:
-            # This can happen if weights are invalid (e.g., all zero).
-            return False
     else:
-        # Human player: suggest the action with the highest weight.
-        decision_key = able_actions[ai_weights.index(max(ai_weights))]
+        result_acts.extend(player.select(core))
+    # if not able_actions:
+    #     # None of the action can this player do, which lets to death
+    #     decision_key = None
+
+    # if not player.real:
+    #     # AI player: make a weighted random choice.
+    #     # random.choices returns a list, so we take the first element.
+    #     try:
+    #         decision_key = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
+    #     except ValueError:
+    #         # This can happen if weights are invalid (e.g., all zero).
+    #         return False
+    # else:
+    #     # Human player: suggest the action with the highest weight.
+    #     decision_key = able_actions[ai_weights.index(max(ai_weights))]
 
     
-    if decision_key is None:
-        return [[], [player.id]]
-    elif decision_key is False:
-        core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", directly=True)
-    else:
-        result_acts.extend(player.select(core, decision_key))
+    # if decision_key is None:
+    #     return [[], [player.id]]
+    # elif decision_key is False:
+    #     core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", directly=True)
+    # else:
+    #     result_acts.extend(player.select(core, decision_key))
 
     return [result_acts, []]
 
@@ -642,6 +669,7 @@ class Core():
 
         human_players = [pl for pl in self.PlDict.values() if pl.real]
         ai_players = [pl for pl in self.PlDict.values() if not pl.real]
+        self.org_delay = self.ui.typing_delay
 
         all_results = []
 
@@ -672,6 +700,9 @@ class Core():
         # Process human players sequentially.
         for pl in human_players:
             all_results.append(SelectAct_WorkerFunc([pl, self]))
+            # if one of the human player asked to leave the game
+            if self.exit_game:
+                return 0
 
         # Aggregate results and register the chosen actions.
         for acts, dead_ids in all_results:
@@ -689,13 +720,17 @@ class Core():
                 self.ActSign[priority][new_act.key].append(new_act)
 
                 # Record the action index on the player object for reference.
-                idx = len(self.ActSign[priority][new_act.key]) - 1
-                self.PlDict[new_act.ownerID].acts.append([new_act.key, idx])
+                # idx = len(self.ActSign[priority][new_act.key]) - 1
+                # self.PlDict[new_act.ownerID].acts.append([new_act.key, idx])
+                self.PlDict[new_act.ownerID].acts.append(new_act)
 
         if self.deaths:
             # Report players who were unable to select an action.
             player_ids_str = ", ".join([str(d) for d in self.deaths])
+            org_typing_delay = self.ui.typing_delay
+            self.ui.typing_delay = 0
             self.ui.out("/core/no-available-act", imp=[player_ids_str], color="RED")
+            self.ui.typing_delay = org_typing_delay
 
     def DealAct(self):
 
@@ -758,7 +793,11 @@ class Core():
         if show:
             org_delay = self.ui.typing_delay
             self.ui.typing_delay = 0 # Speed up death announcements.
-            self.ui.out('/core/dead', imp=[", ".join(show), len(show)])
+            if len(show) > self.BattleEnv["msg_summary_threshold"]:
+                imp = [", ".join(show[:self.BattleEnv["msg_summary_threshold"]-1])+"...(etc)...", len(show)]
+            else:
+                imp = [", ".join(show), len(show)]
+            self.ui.out('/core/dead', imp=imp)
 
             if self.BattleEnv["team_size"] > 1 and len(teams_affected) > 0:
                 for t, dead_members in teams_affected.items():

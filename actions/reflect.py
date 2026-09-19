@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/actions/reflect.py
+"""
+
 import noah
 from actions.act_utils import predictive_defend_ai
 
@@ -9,17 +13,17 @@ def reflect_ai(context):
 
 def reflect_able(context):
     """Ability check for 'Reflect'."""
-    return (context["self"].energy >= 2)
-
+    return (context["self"].energy >= 2 and "reflect" not in context["self"].status)
 
 def reflect_price(act):
-    return 1
+    return 2
 
 
-def reflect_s(pl, core, auto):
+def reflect_selecting(pl, core, auto):
     """Selection logic for 'Reflect'."""
     act = noah.Act(pl.id, "5")
     if pl.energy >= core.ActDict["5"]["price"](act):
+        act.pay(core)
         return (True, noah.Act(pl.id, "5"))
     else:
         if not auto:
@@ -29,10 +33,9 @@ def reflect_s(pl, core, auto):
         return (False, None)
 
 
-def reflect_d(PipeData, args):
+def reflect_dealing(PipeData, args):
     """Resolution logic for 'Reflect'."""
     act, core = args
-    act.pay(core)
     pl = core.PlDict[act.ownerID]
     pl.status["reflect"] = True  # reflect status
     if pl.real:
@@ -46,6 +49,6 @@ def reflect_d(PipeData, args):
 ActionProperties = {  # Reflect
     "price": reflect_price, "priority": 2, "able": reflect_able,
     "human_only": False, "ai": [reflect_ai, predictive_defend_ai], "weight": 1,
-    "selecting_exec": reflect_s, "dealing_exec": [reflect_d],
+    "selecting_exec": reflect_selecting, "dealing_exec": [reflect_dealing],
 }
 

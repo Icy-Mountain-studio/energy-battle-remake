@@ -1,5 +1,10 @@
+"""
+/Energy-Battle-Remake/actions/shot.py
+"""
+
 import noah
-from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final
+from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_do_damage
+from actions.act_utils import deliver_messages
 from actions.act_utils import _calculate_aggression, _get_best_shot_target, firecount, get_direction
 
 
@@ -98,6 +103,8 @@ def shot_selecting(pl, core, auto):
             act.dealed = []
             act.color = "RED"
             act.distant = core.BattleEnv["shot_distance"]
+            act.pay(core)
+            act.AOE = False
 
             core.ui.indent -= 1
             return (True, act)
@@ -162,7 +169,9 @@ def shot_selecting(pl, core, auto):
         act.seth = get_direction(s.place, core.status["snap"][target][2])
         act.channel = "shot-like"
         act.color = "RED"
+        act.AOE = False
         act.distant = core.BattleEnv["shot_distance"]
+        act.pay(core)
 
         return (True, act)
 
@@ -175,9 +184,10 @@ def crossfire_evaluate(PipeData, args):
         core.ui.typing_delay = core.org_delay*3
 
     # This function initiates the data stream for a crossfire action.
-    PipeData = {"msg": [], "damage": {}}
+    PipeData = {"msg": [], "damage": {}, "signatures": {}, "target": act.target, "statistics": {"shots":{}, "misses":{}, "defences":{}, "reflect":{}}}
+    
     PipeData["msg"].append(["./battle", [myself.id, myself.place, act.seth]])
-    PipeData = firecount(myself, PipeData, core, act)
+    PipeData = firecount(core, act, myself, PipeData)
     return PipeData
 
 
@@ -208,6 +218,13 @@ ActionProperties = {  # Shoot
     "price": shot_price, "priority": -1, "able": shot_able,
     "human_only": False, "ai": [shot_ai, advanced_shot_ai], "weight": 1,
     "selecting_exec": shot_selecting,
-    "dealing_exec": [crossfire_evaluate, crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_final],
+    "dealing_exec": [
+        crossfire_evaluate,
+        crossfire_crash,
+        crossfire_reflect,
+        crossfire_defend,
+        crossfire_do_damage,
+        deliver_messages
+        ],
 }
 

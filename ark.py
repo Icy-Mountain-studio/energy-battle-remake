@@ -1,4 +1,8 @@
 """
+/Energy-Battle-Remake/ark.py
+"""
+
+"""
 Project Ark: The Frontend for Energy Battle - Remake
 
 Having the Noah backend isn't enough.
@@ -107,18 +111,24 @@ InitBattleEnv = {
     "team_size": 1,   # Number of players per AI team (1 means free-for-all).
     "assist_team": 0, # Should the first AI team cooperate with humans? (0=No, 1=Yes).
     "ai_quality": 0,
-    "max_consecutive_defend_times": 3,
+    "max_consecutive_defend_times": 1,
+    "amount_of_actions_per_round": 1,
+    "max_move_speed": 1,  # The max amount of steps a player can move at once by action "move"
+    "msg_summary_threshold": 20,
     "setting_options":  {
         "1": "num",
         "2": "real",
         "3": "map",
-        "4": "initHP",
-        "5": "shot_distance",
-        "6": "wave_distance",
-        "7": "team_size",
-        "8": "assist_team",
-        "9": "ai_quality",
-        "10": "max_consecutive_defend_times",
+        "4": "max_move_speed",
+        "5": "initHP",
+        "6": "shot_distance",
+        "7": "wave_distance",
+        "8": "team_size",
+        "9": "assist_team",
+        "10": "ai_quality",
+        "11": "max_consecutive_defend_times",
+        "12": "amount_of_actions_per_round",
+        "13": "msg_summary_threshold",
     },
 }
 
@@ -177,7 +187,7 @@ def Setting():
                 value_display
             ))
 
-        ArkUI.out(noah.table(display_data, f"{C['YELLOW']}$0{C['RESET']}. $1 / {C['CYAN']}$2{C['RESET']}"), directly=True)
+        ArkUI.out(noah.table(display_data, f"{C['YELLOW']}$0{C['RESET']}. $1 {C['YELLOW']}|{C['RESET']} {C['CYAN']}$2{C['RESET']}"), directly=True)
         ArkUI.out("/share/endl")
 
         choice = ArkUI.inp("./prompt")
@@ -226,7 +236,7 @@ def build_snapshot_status(PipeData, args):
     core = args
     snap_status = {}
     for pl in core.PlDict.values():
-        snap_status[pl.id] = [pl.HP, pl.energy, pl.place, pl.team]
+        snap_status[pl.id] = [pl.HP, pl.energy, pl.place, pl.team, pl.real]
 
     PipeData["snap"] = snap_status
     return PipeData
@@ -375,7 +385,6 @@ def Gaming():
         core.rounds += 1
 
         core.ui.out(["/share/endl", "/ark/round-title", "/share/endl"], imp=[core.rounds], color="WHITE")
-        core.ls_acts()
 
         core.SelectAct()
         if core.exit_game:

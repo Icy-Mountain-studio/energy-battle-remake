@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/actions/ShowRules.py
+"""
+
 from actions.act_utils import able_forever, free_of_charge
 
 def ShowRules_selecting(pl, core, auto):
