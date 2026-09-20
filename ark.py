@@ -361,6 +361,33 @@ CmdTable["-build_able_context"] += [
 
 ModsToLoad = {}
 
+def ModManager():
+    ArkUI.workdir = "/ark/mod_manager/"
+    while True:
+        try:
+            user_input = ArkUI.inp("./new_mod_path")
+            ArkUI.out("/share/endl")
+            if user_input:
+                new_mod = noah.import_module_from_path(user_input)
+            else:
+                break
+        except FileNotFoundError:
+            ArkUI.out(["./file_system_failure", "/share/endl"], color="RED")
+            continue
+        except Exception as e:
+            ArkUI.out(["./import_failure", "/share/endl"], color="RED")
+            continue
+
+        try:
+            ModsToLoad[new_mod.ModContents["mod_name"]] = new_mod.ModContents
+        except AttributeError:
+            ArkUI.out(["./metadata_incomplete", "/share/endl"], color="MAGENTA")
+            continue
+
+        ArkUI.out(["./succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
+        break
+
+
 def Gaming():
     """This is the main game loop function."""
     timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -372,7 +399,7 @@ def Gaming():
         "mod_priority": 0,
         "mod_name": "Ark",
         }
-    ModsToLoad["Ark"] = copy.deepcopy(ArkMod)
+    ModsToLoad["Ark"] = ArkMod
 
     core = noah.Core(ModsToLoad)
 
@@ -450,7 +477,8 @@ TransTable = {
     "mode": {
         "1": [ArkUI.get('./opt/1'), Gaming],
         "2": [ArkUI.get('./opt/2'), Setting],
-        "3": [ArkUI.get('./opt/3'), _exit],
+        "3": [ArkUI.get('./opt/3'), ModManager],
+        "4": [ArkUI.get('./opt/4'), _exit],
     }
 }
 
@@ -481,6 +509,7 @@ if __name__ == "__main__":
         else:
             ArkUI.out("/share/not-found")
             ArkUI.out("/share/endl")
+        ArkUI.workdir = "/ark/"
 
         if exit_game:
             break

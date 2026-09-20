@@ -10,7 +10,6 @@ Project initiated: 2025.8.2
 Last updated: 2025.10.19
 """
 
-import importlib
 import readline
 import gzip
 import sys
@@ -19,6 +18,9 @@ import os
 import re
 import random
 from functools import reduce
+
+import importlib.util
+from pathlib import Path
 
 
 # A common trick to enable ANSI escape code support on Windows terminals.
@@ -44,11 +46,10 @@ def clear_screen():
 
 def import_module_from_path(file_path: str):
     """
-    Dynamically imports a Python module from a given file path by temporarily
-    modifying sys.path.
-
-    This method is particularly useful when the target script needs to import
-    other local modules residing in its own directory.
+    Dynamically imports a Python module from a given file path.
+    Temporarily adds the module's parent directory to sys.path to allow
+    local imports within the mod, while assigning a unique module name
+    to avoid collisions when multiple mods share the same file name (e.g. main.py).
 
     Args:
         file_path (str): The absolute or relative path to the .py file.
@@ -56,34 +57,45 @@ def import_module_from_path(file_path: str):
     Returns:
         module: The loaded Python module object.
     """
+    # 1. Resolve path cross-platform and validate
+    mod_path = Path(file_path).resolve()
 
-    # 1. Get the absolute path to avoid issues with relative paths
-    abs_file_path = os.path.abspath(file_path)
+    if not mod_path.exists() or mod_path.suffix != ".py":
+        raise FileNotFoundError(f"Invalid Python module path: {mod_path}")
 
-    # 2. Extract the directory path and the module name (filename without .py)
-    dir_path = os.path.dirname(abs_file_path)
-    file_name = os.path.basename(abs_file_path)
-    module_name = os.path.splitext(file_name)[0]
+    dir_path = str(mod_path.parent)
 
-    # Track whether we modified sys.path so we can clean it up later
+    # Generate a unique module identifier using parent directory and filename
+    # to avoid conflicts in sys.modules (e.g., two mods both named 'main.py')
+    unique_module_name = f"mod_{abs(hash(dir_path))}_{mod_path.stem}"
+
+    # 2. Temporarily add directory to sys.path to support local dependencies
     path_added = False
-
-    # 3. Temporarily add the directory to sys.path
     if dir_path not in sys.path:
-        # Insert at index 0 to ensure Python searches this directory first
         sys.path.insert(0, dir_path)
         path_added = True
 
     try:
-        # 4. Import the module dynamically
-        module = importlib.import_module(module_name)
+        # 3. Create module spec and load module
+        spec = importlib.util.spec_from_file_location(
+            unique_module_name,
+            mod_path
+            )
+
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not load spec for module at: {mod_path}")
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[unique_module_name] = module
+        spec.loader.exec_module(module)
+
         return module
 
     finally:
-        # 5. Clean up: remove the directory from sys.path if we added it
-        # The 'finally' block ensures this runs even if the import fails
+        # 4. Clean up: restore sys.path
         if path_added:
             sys.path.remove(dir_path)
+
 
 def deep_merge(low_dict, high_dict):
     """high_dict will cover low_dict"""
@@ -707,8 +719,11 @@ class Core():
             # Sort the mods by their priorities
             self.Mods = sorted(NewMods.values(), key=lambda d: d.get("mod_priority", 0))
 
-        # Merging Mods by their priorities
-        self.MergedMod: list = reduce(deep_merge, self.Mods)
+        try:
+            # Merging Mods by their priorities
+            self.MergedMod: list = reduce(deep_merge, self.Mods)
+        except AttributeError:
+            return -1
 
         # A dictionary containing battle setup parameters (e.g., number of players, initial HP).
         self.BattleEnv: dict = self.MergedMod["BattleEnv"]
@@ -785,14 +800,14 @@ class Core():
 
             if show_progress:
                 print(self.ui.get('/core/ai-completed').ljust(40), end='\n\n')
-
+        
         # Process human players sequentially.
         for pl in human_players:
             all_results.append(SelectAct_WorkerFunc([pl, self]))
             # if one of the human player asked to leave the game
             if self.exit_game:
                 return 0
-
+                
         # Aggregate results and register the chosen actions.
         for acts, dead_ids in all_results:
             self.deaths.extend(dead_ids)

@@ -288,7 +288,8 @@ Expression = {
     '/ark/opt-title': "请选择\n-------\n",
     '/ark/opt/1': "开启战局",
     '/ark/opt/2': "配置战局",
-    '/ark/opt/3': "退出游戏",
+    '/ark/opt/3': "管理模组",
+    '/ark/opt/4': "退出游戏",
     '/ark/break': "已退出战局",
     "/ark/exit": f"{C['YELLOW']}[即将退出游戏]{C['RESET']}",
     "/ark/lang_name": "简体中文",
@@ -318,7 +319,13 @@ Expression = {
     '/ark/setting/desc/amount_of_actions_per_round': "玩家每回合的行动次数",
     '/ark/setting/desc/msg_summary_threshold': "战报自动折叠的长度阈值",
 
+    "/ark/mod_manager/new_mod_path": "请输入要导入的模组的路径\n(直接按Enter退出)\n\n  ->  ",
+    "/ark/mod_manager/file_system_failure": "导入出错 请确保路径正确",
+    "/ark/mod_manager/import_failure": "导入出错 请确保模组文件有效",
+    "/ark/mod_manager/metadata_incomplete": "模组文件的元数据不完整 无法导入",
+    "/ark/mod_manager/succeed": "模组'$0'导入成功",
 },
+
 
 "zh_tw": {
     '/ark/round-title': "第$0回合\n"+'-'*20,
