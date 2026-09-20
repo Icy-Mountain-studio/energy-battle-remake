@@ -10,10 +10,20 @@ Project initiated: 2025.8.2
 Last updated: 2025.10.19
 """
 
-import random, re, os, time, sys, gzip
+import importlib
+import readline
+import gzip
+import sys
+import time
+import os
+import re
+import random
+from functools import reduce
+
 
 # A common trick to enable ANSI escape code support on Windows terminals.
 os.system("")
+
 
 def clear_screen():
     """
@@ -30,6 +40,62 @@ def clear_screen():
     # For macOS and Linux (and other POSIX systems)
     else:
         _ = os.system('clear')
+
+
+def import_module_from_path(file_path: str):
+    """
+    Dynamically imports a Python module from a given file path by temporarily
+    modifying sys.path.
+
+    This method is particularly useful when the target script needs to import
+    other local modules residing in its own directory.
+
+    Args:
+        file_path (str): The absolute or relative path to the .py file.
+
+    Returns:
+        module: The loaded Python module object.
+    """
+
+    # 1. Get the absolute path to avoid issues with relative paths
+    abs_file_path = os.path.abspath(file_path)
+
+    # 2. Extract the directory path and the module name (filename without .py)
+    dir_path = os.path.dirname(abs_file_path)
+    file_name = os.path.basename(abs_file_path)
+    module_name = os.path.splitext(file_name)[0]
+
+    # Track whether we modified sys.path so we can clean it up later
+    path_added = False
+
+    # 3. Temporarily add the directory to sys.path
+    if dir_path not in sys.path:
+        # Insert at index 0 to ensure Python searches this directory first
+        sys.path.insert(0, dir_path)
+        path_added = True
+
+    try:
+        # 4. Import the module dynamically
+        module = importlib.import_module(module_name)
+        return module
+
+    finally:
+        # 5. Clean up: remove the directory from sys.path if we added it
+        # The 'finally' block ensures this runs even if the import fails
+        if path_added:
+            sys.path.remove(dir_path)
+
+def deep_merge(low_dict, high_dict):
+    """high_dict will cover low_dict"""
+    result = low_dict.copy()
+    for key, value in high_dict.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            # Both dicts, keep merging
+            result[key] = deep_merge(result[key], value)
+        else:
+            # Otherwise cover it directly
+            result[key] = value
+    return result
 
 
 # --- Color Palette ---
@@ -50,10 +116,11 @@ C = {
     "WHITE": '\033[1;37m',
 }
 
+
 class IO():
     """Defines an IO class for managing input, output, and logging."""
 
-    def __init__(self, exp={}, logpath="noah-log.gz", delay=0.01):
+    def __init__(self, exp:dict | None = None, logpath: str = "noah-log.gz", delay: int | float = 0.01):
         """
         Initializes the IO manager.
 
@@ -63,17 +130,23 @@ class IO():
                         where lineX is a string template to be processed by explain().
             logpath (str): The path for storing log files.
         """
-        self.exp = exp
-        self.workdir = "/"  # The current working directory for relative paths in `exp`.
+        if exp != None:
+            self.exp = exp
+        else:
+            self.exp = {}
+        # The current working directory for relative paths in `exp`.
+        self.workdir = "/"
         self.history = []   # A history of all inputs and outputs.
         self.logs = []      # A list of messages to be written to a log file.
         self.logpath = logpath
 
         self.colors = C
-        self.indent = 0     # Tracks the current indentation level for formatted output.
-        self.typing_delay = delay  # Delay for the typewriter effect. Set to 0 to disable.
+        # Tracks the current indentation level for formatted output.
+        self.indent = 0
+        # Delay for the typewriter effect. Set to 0 to disable.
+        self.typing_delay = delay
 
-    def out(self, key, mode="sh", real_end="\n", directly=False, imp=[], indent=True, color=None, speed_stability=3):
+    def out(self, key, mode: str = "sh", real_end: str = "\n", directly: bool = False, imp: list | None = None, indent: bool = True, color=None, speed_stability: int | float = 3):
         """
         Outputs content to specified channels after evaluating it.
 
@@ -91,10 +164,13 @@ class IO():
                                  If False, no indentation is applied.
             color (str): The key for a color from `self.colors` to apply to the output.
         """
+        if not imp:
+            imp = []
         if isinstance(key, list):
             # If `key` is a list, output each item in it recursively.
             for k in key:
-                self.out(k, mode, real_end, directly, imp, indent, color, speed_stability)
+                self.out(k, mode, real_end, directly, imp,
+                         indent, color, speed_stability)
         else:
             # Determine indentation prefix.
             if indent is True:
@@ -112,13 +188,16 @@ class IO():
                 orinal_result = explain(self.get(key), imp)
 
             if orinal_result != "NONE":
-                indented_result = indent_spaces + orinal_result  # Result with indentation for logging/history.
+                # Result with indentation for logging/history.
+                indented_result = indent_spaces + orinal_result
                 full_format_result = indented_result
                 colored_result = orinal_result
 
                 if color:
-                    full_format_result = self.colors.get(color, "") + indented_result + self.colors["RESET"]
-                    colored_result = self.colors.get(color, "") + orinal_result + self.colors["RESET"]
+                    full_format_result = self.colors.get(
+                        color, "") + indented_result + self.colors["RESET"]
+                    colored_result = self.colors.get(
+                        color, "") + orinal_result + self.colors["RESET"]
 
                 # Output to the specified channels.
                 if "s" in mode:
@@ -136,14 +215,12 @@ class IO():
                     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
                     self.logs.append(f"{timestamp}\n{orinal_result}\n")
 
-
     def write_log(self):
         with gzip.open(self.logpath, 'ab') as f:
             # need to encode the string
             f.write(("\n".join(self.logs) + '\n').encode('utf-8'))
 
         self.logs.clear()
-
 
     def inp(self, key, mode="sh", directly=False, imp=[], indent=True, color=None):
         """
@@ -156,7 +233,8 @@ class IO():
         Returns:
             str: The user's input.
         """
-        self.out(key, mode, real_end="", directly=directly, imp=imp, indent=indent, color=color)
+        self.out(key, mode, real_end="", directly=directly,
+                 imp=imp, indent=indent, color=color)
         res = input()
         if "h" in mode and self.history:
             self.history[-1] += res
@@ -188,7 +266,6 @@ class IO():
             return self.exp[self.dealpath(key)]
         except KeyError:
             return "<haven't translated>"
-
 
     def _typewriter_print(self, text: str, speed_stability=0):
         """Prints text character by character with a typewriter effect,
@@ -240,7 +317,8 @@ def explain(template_str: str, values: list) -> str:
                 return str(values[index])
             else:
                 # If the index is out of bounds, return the original placeholder to avoid errors.
-                return match.group(0)  # match.group(0) is the full matched string, e.g., "$12".
+                # match.group(0) is the full matched string, e.g., "$12".
+                return match.group(0)
         except (ValueError, IndexError):
             # In case of any conversion error, also return the original placeholder.
             return match.group(0)
@@ -250,7 +328,7 @@ def explain(template_str: str, values: list) -> str:
     return re.sub(r'\$(\d+)', replacer, template_str)
 
 
-def table(data, exp, spl="\n"):
+def table(data: list[list] | list[tuple], exp: str, spl: str ="\n") -> str:
     """
     Generates a formatted string table from data using an expression template.
 
@@ -264,19 +342,23 @@ def table(data, exp, spl="\n"):
     """
     return spl.join([explain(exp, i) for i in data])
 
+
 class Player():
     """The main entity of the game: a Player."""
 
-    def __init__(self, id):
+    def __init__(self, id: int):
         self.id = id           # Unique identifier for the player.
         self.energy = 0        # Current amount of energy the player possesses.
         self.HP = 1            # Current health points.
-        self.place = 0         # The player's current location/level in the game world.
+        # The player's current location/level in the game world.
+        self.place = 0
         self.ai_quality = 0    # The quality of the player's ai strategy logic.
-        self.unable = []       # A blacklist of action names this player cannot use.
+        # A blacklist of action names this player cannot use.
+        self.unable = []
         self.real = True       # True if this is a human player, False for AI.
         self.outd = 0          # Total damage dealt by this player.
-        self.HPlog = []        # Log of HP changes: [[damage, source_id, action_name], ...].
+        # Log of HP changes: [[damage, source_id, action_name], ...].
+        self.HPlog = []
         self.kills = []        # List of player IDs killed by this player.
 
         # Status varibles that resets every turn.For example, defend for one turn.
@@ -290,7 +372,7 @@ class Player():
         # Format: [[action_key<str>, action_sign_index<int>], ...]
         self.acts = []
 
-    def select(self, core):
+    def select(self, core: Core) -> list[Act]:
         """
         Allows the player to select an action, which generates and returns Act objects.
         This method handles the selection logic for both human and AI players.
@@ -319,11 +401,15 @@ class Player():
 
                 if core.BattleEnv["amount_of_actions_per_round"] > 1:
                     # Prompt human player for input.
-                    prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name"), len(result), core.BattleEnv["amount_of_actions_per_round"]]
-                    selection = core.ui.inp('/core/ask-for-act-multi', imp=prompt_imp)
+                    prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(
+                        f"/act/{decision}/name"), len(result), core.BattleEnv["amount_of_actions_per_round"]]
+                    selection = core.ui.inp(
+                        '/core/ask-for-act-multi', imp=prompt_imp)
                 else:
-                    prompt_imp = [self.id, self.HP, self.energy, self.place, core.ui.get(f"/act/{decision}/name")]
-                    selection = core.ui.inp('/core/ask-for-act', imp=prompt_imp)
+                    prompt_imp = [self.id, self.HP, self.energy,
+                                  self.place, core.ui.get(f"/act/{decision}/name")]
+                    selection = core.ui.inp(
+                        '/core/ask-for-act', imp=prompt_imp)
 
                 if selection == "":
                     # If human player presses Enter, accept the suggested decision.
@@ -331,12 +417,14 @@ class Player():
                     auto = True
                     # Slow down typing to make it clear the choice was automated.
                     core.ui.typing_delay *= 3
-                    core.ui.out('/core/selected', imp=[core.ui.get(f"/act/{selection}/name")])
+                    core.ui.out('/core/selected',
+                                imp=[core.ui.get(f"/act/{selection}/name")])
                     core.ui.typing_delay /= 3
                     time.sleep(0.5)
 
                 if selection not in core.ActDict:
-                    core.ui.out(['/share/not-found', '/share/endl'], color="RED")
+                    core.ui.out(
+                        ['/share/not-found', '/share/endl'], color="RED")
                     continue
 
                 if selection in self.unable:
@@ -348,7 +436,8 @@ class Player():
                 # AI player uses the pre-determined decision.
                 # selection = decision
                 try:
-                    selection = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
+                    selection = random.choices(
+                        population=able_actions, weights=ai_weights, k=1)[0]
                 except ValueError:
                     core.deaths.append(self.id)
                     break
@@ -358,13 +447,15 @@ class Player():
                 core.ui.workdir = f"/act/{selection}"
 
             # Execute the selection function (`selecting_exec`) of the chosen action.
-            quit_selecting, new_act = core.ActDict[selection]["selecting_exec"](self, core, auto)
+            quit_selecting, new_act = core.ActDict[selection]["selecting_exec"](
+                self, core, auto)
 
             if new_act:
                 result.append(new_act)
 
             elif not self.real:
-                core.RaiseError("Player.select", f"AI Player {self.id} didn't get any act object from selected act {selection}")
+                core.RaiseError("Player.select", f"AI Player {
+                                self.id} didn't get any act object from selected act {selection}")
 
             if core.exit_game:
                 break
@@ -372,12 +463,13 @@ class Player():
             if quit_selecting:
                 continue
             elif not self.real:
-                core.RaiseError("Player.select", f"Act {selection} let P{self.id}(AI) go into selection loop")
+                core.RaiseError("Player.select", f"Act {selection} let P{
+                                self.id}(AI) go into selection loop")
                 break
 
         return result
 
-    def hurted(self, decreasion, origin, act_key, core):
+    def hurted(self, decreasion: int | float, origin: int, act_key: str, core: Core):
         """
         The standard method for a player to take damage and log the event.
 
@@ -396,10 +488,11 @@ class Player():
 
         if decreasion != 0:
             core.PlDict[origin].outd += decreasion
-            self.HPlog.append([decreasion, origin, core.ui.get(f'/act/{act_key}/name')])
+            self.HPlog.append(
+                [decreasion, origin, core.ui.get(f'/act/{act_key}/name')])
 
 
-    def build_able(self, core):
+    def build_able(self, core: Core) -> tuple[list]:
         """
         Calculates which actions are currently available to this player based on game state.
 
@@ -416,14 +509,15 @@ class Player():
         ai_weights = []
 
         context = {"self": self, "core": core}
-        context = core.Exec("-build_able_context", "Player.build_able", context)
-
+        context = core.Exec("-build_able_context",
+                            "Player.build_able", context)
 
         # Iterate through all possible actions to see which are usable.
         for key, act in core.ActDict.items():
 
             is_human_only = act["human_only"]
-            is_currently_able = (key not in self.unable) and act["able"](context)
+            is_currently_able = (
+                key not in self.unable) and act["able"](context)
 
             if not is_human_only and is_currently_able:
                 able.append(key)
@@ -440,14 +534,16 @@ class Act():
     'Action': A core concept in the Noah kernel.
     Represents a player's chosen action to be executed during the dealing phase.
     """
-    def __init__(self, ownerID, key, channel='default'):
+
+    def __init__(self, ownerID: int, key: str, channel: str ='default'):
         self.acted = False      # Has this action been processed/dealt?
-        self.ownerID = ownerID  # The ID of the player who initiated this action.
+        # The ID of the player who initiated this action.
+        self.ownerID = ownerID
         self.key = key          # The key of this action in ActDict.
         self.channel = channel  # The pipe processing channel this action uses.
         self.payed = False      # Has the energy cost for this action been paid?
 
-    def deal(self, core):
+    def deal(self, core: Core):
         """
         Processes or 'settles' this action.
         It adds the action's execution logic to the appropriate PipeWorkFlow.
@@ -463,7 +559,7 @@ class Act():
             )
             self.acted = True
 
-    def pay(self, core):
+    def pay(self, core: Core):
         """
         Pays the energy cost for this action.
         Separated into its own method to allow one Act to potentially pay for another.
@@ -472,10 +568,12 @@ class Act():
             cost = core.ActDict[self.key]["price"](self)
             core.PlDict[self.ownerID].energy -= cost
             self.payed = True
-            if core.PlDict[self.ownerID].energy < 0:
-                core.RaiseError("Act.pay", f"Player {self.ownerID} can't afford act {self.key}")
+            if core.PlDict[self.ownerID].energy < 0 and cost > 0:
+                core.RaiseError("Act.pay", f"Player {
+                                self.ownerID} can't afford act {self.key}")
 
-def SelectAct_WorkerFunc(task):
+
+def SelectAct_WorkerFunc(task: tuple[Player, Core]):
     """
     A worker function designed for use with `map`. It handles the full action
     selection process for a single player.
@@ -486,33 +584,10 @@ def SelectAct_WorkerFunc(task):
     able_actions, ai_weights = player.build_able(core)
     if not able_actions:
         # This player has no available actions.
-        return [[], [player.id]] # Returns empty acts, and player ID for potential "no action" log.
+        # Returns empty acts, and player ID for potential "no action" log.
+        return [[], [player.id]]
     else:
         result_acts.extend(player.select(core))
-    # if not able_actions:
-    #     # None of the action can this player do, which lets to death
-    #     decision_key = None
-
-    # if not player.real:
-    #     # AI player: make a weighted random choice.
-    #     # random.choices returns a list, so we take the first element.
-    #     try:
-    #         decision_key = random.choices(population=able_actions, weights=ai_weights, k=1)[0]
-    #     except ValueError:
-    #         # This can happen if weights are invalid (e.g., all zero).
-    #         return False
-    # else:
-    #     # Human player: suggest the action with the highest weight.
-    #     decision_key = able_actions[ai_weights.index(max(ai_weights))]
-
-    
-    # if decision_key is None:
-    #     return [[], [player.id]]
-    # elif decision_key is False:
-    #     core.ui.out(f"[SelectAct_WorkerFunc] Invalid weights for actions. Actions: {able_actions}, Weights: {ai_weights}", mode="l", directly=True)
-    # else:
-    #     result_acts.extend(player.select(core, decision_key))
-
     return [result_acts, []]
 
 
@@ -536,8 +611,6 @@ def PipeWorkFlow(PipeData, steps: list, args: tuple):
     return OutData
 
 
-
-
 default_cmd_table = {
 
     "-update_status": [
@@ -550,7 +623,6 @@ default_cmd_table = {
 }
 
 
-
 class Core():
     """
     The Core class encapsulates the main game state and logic.
@@ -558,36 +630,22 @@ class Core():
     between functions by holding them as attributes, making the code cleaner and more modular.
     """
 
-    def __init__(self, BattleEnv: dict, ActDict: dict, ui: IO):
-        # A dictionary containing battle setup parameters (e.g., number of players, initial HP).
-        self.BattleEnv = BattleEnv
+    def __init__(self, Mods: dict):
+
+        # Make a mod-load to get original core settings and gaming data
+        self.ModsHotReload(Mods)
 
         # A dictionary that registers actions for the current turn, grouped by priority.
         # This structure allows for easy, priority-based processing.
         # Format: {priority1: {ActName1: [Act1, ...], ...}, ...}
-        self.ActSign = {}
+        self.ActSign: dict = {}
 
         # The central dictionary of all players in the game.
         # Format: {player_id: Player_instance, ...}
-        self.PlDict = {}
-
-        # The dictionary defining all possible actions in the game.
-        # Format: { "action_key": { ... action properties ... }, ... }
-        #
-        # Action properties include:
-        #   "name": (str) The display name of the action.
-        #   "price": (func) A function that calculates the energy cost of the action.
-        #   "price_display": (str) A string representing the price for display purposes.
-        #   "priority": (int) The execution priority. Higher numbers are executed first.
-        #   "able": (func) A function returning a bool, checking if the action is usable.
-        #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
-        #   "ai": (func) A function that returns a numerical weight for AI decision-making.
-        #   "selecting_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
-        #   "dealing_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
-        self.ActDict = ActDict
+        self.PlDict: dict = {}
 
         # The current round number.
-        self.rounds = 0
+        self.rounds: int = 0
 
         # A dictionary holding cached statistics about the current game state,
         # used for quick lookups by AI and for displaying info.
@@ -601,27 +659,24 @@ class Core():
         #     place: {team: total_energy, "sum": total_energy_at_place},
         #     "all": total_energy_in_game
         # }
-        self.status = {}
+        self.status: dict = {}
 
         # A temporary dictionary to hold stream data for each channel during the dealing phase.
-        self.channels = {}
+        self.channels: dict = {}
 
-        self.deaths = [] # List of player IDs who died this turn.
-        self.ui = ui
-        self.exit_game = False # A flag to signal the end of the game loop.
-
-        # A table that contain the names and PipeWorkFlows of kernel commands
-        self.CmdTable = default_cmd_table
+        self.deaths: list = []  # List of player IDs who died this turn.
+        self.exit_game: bool = False  # A flag to signal the end of the game loop.
 
         # A table that contain the Event objects
-        self.EventBus = []
+        self.EventBus: list = []
 
-        self.debug = True  # The debug mode of the Core
+        self.debug: bool = True  # The debug mode of the Core
+
 
     def mk_pldict(self):
         """Creates the `self.PlDict` (player dictionary) based on `self.BattleEnv` settings."""
         if self.BattleEnv["team_size"] < 1:
-            self.BattleEnv["team_size"] = 1 # Prevent division by zero.
+            self.BattleEnv["team_size"] = 1  # Prevent division by zero.
 
         team_count = 0
         cur_team = 1 if not self.BattleEnv["assist_team"] else 0
@@ -646,6 +701,38 @@ class Core():
 
             self.PlDict[i + 1] = pl
 
+    def ModsHotReload(self, NewMods: dict | None = None):
+
+        if NewMods:
+            # Sort the mods by their priorities
+            self.Mods = sorted(NewMods.values(), key=lambda d: d.get("mod_priority", 0))
+
+        # Merging Mods by their priorities
+        self.MergedMod: list = reduce(deep_merge, self.Mods)
+
+        # A dictionary containing battle setup parameters (e.g., number of players, initial HP).
+        self.BattleEnv: dict = self.MergedMod["BattleEnv"]
+
+        # The dictionary defining all possible actions in the game.
+        # Format: { "action_key": { ... action properties ... }, ... }
+        #
+        # Action properties include:
+        #   "name": (str) The display name of the action.
+        #   "price": (func) A function that calculates the energy cost of the action.
+        #   "price_display": (str) A string representing the price for display purposes.
+        #   "priority": (int) The execution priority. Higher numbers are executed first.
+        #   "able": (func) A function returning a bool, checking if the action is usable.
+        #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
+        #   "ai": (func) A function that returns a numerical weight for AI decision-making.
+        #   "selecting_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
+        #   "dealing_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
+        self.ActDict: dict = self.MergedMod["ActDict"]
+
+        self.ui: IO = self.MergedMod["ui"]
+
+        # A table that contain the names and PipeWorkFlows of kernel commands
+        self.CmdTable: dict = self.MergedMod.get("CmdTable", default_cmd_table)
+
 
     def update_status(self):
         """
@@ -657,7 +744,6 @@ class Core():
         - Easy extension without modifying core Noah code
         """
         self.status = self.Exec("-update_status", "Core.update_status", {})
-
 
     def SelectAct(self):
         """
@@ -676,9 +762,11 @@ class Core():
         # Process AI players using `map` for a clean, parallel-ready structure.
         if ai_players:
             # Show progress bar for a large number of AIs.
-            show_progress = len(self.PlDict) >= 10000 or (self.BattleEnv["ai_quality"] > 0 and len(self.PlDict) >= 100)
+            show_progress = len(self.PlDict) >= 10000 or (
+                self.BattleEnv["ai_quality"] > 0 and len(self.PlDict) >= 100)
             if show_progress:
-                print(f"{self.ui.get('/core/ai-dealing')}  {0.000:3.0f}%", end='\r', flush=True)
+                print(f"{self.ui.get('/core/ai-dealing')
+                         }  {0.000:3.0f}%", end='\r', flush=True)
 
             tasks = [[pl, self] for pl in ai_players]
             results_iterator = map(SelectAct_WorkerFunc, tasks)
@@ -690,7 +778,8 @@ class Core():
                 if show_progress:
                     completed_tasks += 1
                     percentage = (completed_tasks / total_tasks) * 100
-                    status_line = f"{self.ui.get('/core/ai-dealing')}  {percentage:3.0f}%".ljust(40)
+                    status_line = f"{self.ui.get(
+                        '/core/ai-dealing')}  {percentage:3.0f}%".ljust(40)
                     print(status_line, end='\r', flush=True)
                 all_results.append(res)
 
@@ -729,7 +818,8 @@ class Core():
             player_ids_str = ", ".join([str(d) for d in self.deaths])
             org_typing_delay = self.ui.typing_delay
             self.ui.typing_delay = 0
-            self.ui.out("/core/no-available-act", imp=[player_ids_str], color="RED")
+            self.ui.out("/core/no-available-act",
+                        imp=[player_ids_str], color="RED")
             self.ui.typing_delay = org_typing_delay
 
     def DealAct(self):
@@ -738,21 +828,21 @@ class Core():
 
         """Processes all selected actions for the round, in descending order of priority."""
         self.org_delay = self.ui.typing_delay
-        self.ui.typing_delay = 0 # Disable typing delay for faster processing.
+        self.ui.typing_delay = 0  # Disable typing delay for faster processing.
 
         # Get priorities and sort them from highest to lowest.
         act_order = sorted(self.ActSign.keys(), reverse=True)
         for priority in act_order:
             for act_name in self.ActSign[priority]:
                 for act in self.ActSign[priority][act_name]:
-                    act.deal(self) # Queues the action into the pipe workflow.
+                    act.deal(self)  # Queues the action into the pipe workflow.
 
         # After all actions are dealt, check for deaths. This is a preliminary check.
         for _pl in list(self.PlDict.keys()):
             if self.PlDict[_pl].HP <= 0:
                 self.deaths.append(_pl)
 
-        self.ui.typing_delay = self.org_delay # Restore original typing delay.
+        self.ui.typing_delay = self.org_delay  # Restore original typing delay.
 
     def rm_deaths(self):
         """Removes deceased players from the game and logs their demise."""
@@ -774,7 +864,8 @@ class Core():
                 if player.real:
                     # Pause for human player's death message.
                     self.ui.typing_delay *= 5
-                    last_hit = player.HPlog[-1] if player.HPlog else [0, "Unknown", "Fate"]
+                    last_hit = player.HPlog[-1] if player.HPlog else [0,
+                                                                      "Unknown", "Fate"]
                     self.ui.inp('/core/human-dead', imp=[_pl] + last_hit)
                     self.ui.typing_delay /= 5
 
@@ -785,23 +876,25 @@ class Core():
                         if killerID in self.PlDict:
                             self.PlDict[killerID].kills.append(_pl)
                 except IndexError:
-                    pass # No damage log available.
+                    pass  # No damage log available.
 
                 del self.PlDict[_pl]
                 show.append(str(_pl))
 
         if show:
             org_delay = self.ui.typing_delay
-            self.ui.typing_delay = 0 # Speed up death announcements.
+            self.ui.typing_delay = 0  # Speed up death announcements.
             if len(show) > self.BattleEnv["msg_summary_threshold"]:
-                imp = [", ".join(show[:self.BattleEnv["msg_summary_threshold"]-1])+"...(etc)...", len(show)]
+                imp = [", ".join(
+                    show[:self.BattleEnv["msg_summary_threshold"]-1])+"...(etc)...", len(show)]
             else:
                 imp = [", ".join(show), len(show)]
             self.ui.out('/core/dead', imp=imp)
 
             if self.BattleEnv["team_size"] > 1 and len(teams_affected) > 0:
                 for t, dead_members in teams_affected.items():
-                    self.ui.out('/core/dead-team', imp=[t, len(dead_members)], color="RED")
+                    self.ui.out('/core/dead-team',
+                                imp=[t, len(dead_members)], color="RED")
 
             self.ui.typing_delay = org_delay
 
@@ -816,7 +909,7 @@ class Core():
         self.deaths = []
         self.channels = {}
 
-    def ls_acts(self, typing_delay=0, speed_stability=2):
+    def ls_acts(self, typing_delay: int | float = 0, speed_stability: int | float = 2):
         """Displays the list of available actions in a nicely formatted table."""
         self.ui.workdir = "/act/"
 
@@ -824,7 +917,7 @@ class Core():
 
         act_data = [
             (key, self.ui.get(f"./{key}/name"), self.ui.get(f"./{key}/price"))
-             for key in self.ActDict.keys()
+            for key in self.ActDict.keys()
         ]
 
         table_str = table(
@@ -838,22 +931,13 @@ class Core():
         self.ui.out(final_list, directly=True, speed_stability=speed_stability)
         self.ui.typing_delay = original_typing_delay
 
-    def refresh(self):
-        """Resets all data for the current battle session to start fresh."""
-        self.clean_round()
-        self.PlDict = {}
-        # Assuming `exp` is available in the global scope to re-initialize IO.
-        # This might need adjustment based on the main script's structure.
-        self.ui = IO(exp=self.ui.exp)
-
-
-    def RaiseError(self, domain, msg):
+    def RaiseError(self, domain: str, msg: str):
         mode = "l"
         if self.debug:
             mode += "s"
-        self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, directly=True, color="RED")
+        self.ui.inp(f"[{domain}] ERROR: {msg}",
+                    mode=mode, directly=True, color="RED")
         self.ui.write_log()
-
 
     def Exec(self, cmd_name: str, domain: str, PipeData=None):
         if cmd_name not in self.CmdTable:
@@ -863,9 +947,9 @@ class Core():
             try:
                 return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
             except Exception as e:
-                self.RaiseError(domain, f"Kernel command '{cmd_name}' failed: {e}")
+                self.RaiseError(domain, f"Kernel command '{
+                                cmd_name}' failed: {e}")
                 return {}
-
 
     def DealEvents(self):
         """
@@ -878,13 +962,13 @@ class Core():
             try:
                 event.happen(self)
             except Exception as e:
-                self.RaiseError("Core.DealEvents", f"Event '{event.type}' failed: {e}")
+                self.RaiseError("Core.DealEvents", f"Event '{
+                                event.type}' failed: {e}")
 
         # Clear the EventBus
         self.EventBus.clear()
 
-
-    def debug_snapshot(self, title="Game State", split_str_lenth=30):
+    def debug_snapshot(self, title: str = "Game State", split_str_lenth: int = 30):
         msg = []
         msg.append(f"{'='*split_str_lenth}")
         msg.append(f"{title} - Round {self.rounds}")
@@ -892,20 +976,21 @@ class Core():
 
         msg.append(f"Alive: {len(self.PlDict)} players")
         for pid, pl in self.PlDict.items():
-            msg.append(f"\tP{pid}: HP={pl.HP} E={pl.energy} Pos={pl.place} Team={pl.team}")
+            msg.append(f"\tP{pid}: HP={pl.HP} E={
+                       pl.energy} Pos={pl.place} Team={pl.team}")
 
         if self.ActSign:
             msg.append(f"\nPending Actions:")
             for priority in sorted(self.ActSign.keys(), reverse=True):
                 for act_key, acts in self.ActSign[priority].items():
-                    msg.append(f"  Priority {priority} / ActCode {act_key}: {len(acts)} actions")
+                    msg.append(f"  Priority {
+                               priority} / ActCode {act_key}: {len(acts)} actions")
 
         msg.append(f"{'='*split_str_lenth}")
 
         return "\n".join(msg)
 
-
-    def battle_env_snapshot(self, title="Battle Environment", split_str_lenth=30):
+    def battle_env_snapshot(self, title:str = "Battle Environment", split_str_lenth:int = 30):
         msg = []
         msg.append(f"{'='*split_str_lenth}")
         msg.append(f"{title}s")
@@ -937,6 +1022,7 @@ class Event():
         if not self.has_happened:
             core.Exec(self.type, self.domain, self.inp)
         else:
-            core.RaiseError(self.domain, f"One Event object has happened but try to happend again (Type {self.type}).")
+            core.RaiseError(
+                self.domain, f"One Event object has happened but try to happend again (Type {self.type}).")
         self.has_happened = True
 

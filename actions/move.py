@@ -39,7 +39,6 @@ def strategic_move_ai(context):
     s = context["self"]
     core = context["core"]
     
-    # 考虑本回合已选择移动的虚拟位置
     current_virtual_place = s.place + s.status.get("moving", 0)
 
     current_pos_context = context.copy()

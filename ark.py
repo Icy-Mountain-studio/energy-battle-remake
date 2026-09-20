@@ -29,7 +29,7 @@ Last updated: 2025.10.19
 import noah  # Import the Noah kernel, with all due ceremony.
 from noah import C
 from localize import Expression
-# import tweaks
+import copy
 
 
 # A simple, data-driven language selector function.
@@ -104,16 +104,16 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 InitBattleEnv = {
     "num": 10,      # Total number of players.
     "real": 1,      # Number of human players.
-    "map": 2,       # Map size (number of vertical levels above and below the center).
-    "initHP": 1,    # Initial HP for each player.
+    "map": 3,       # Map size (number of vertical levels above and below the center).
+    "initHP": 15,    # Initial HP for each player.
     "shot_distance": 1,    # Range of the 'Shoot' action.
-    "wave_distance": 99999,    # Range of the 'Energy Wave' action (effectively infinite).
+    "wave_distance": 3,    # Range of the 'Energy Wave' action (effectively infinite).
     "team_size": 1,   # Number of players per AI team (1 means free-for-all).
     "assist_team": 0, # Should the first AI team cooperate with humans? (0=No, 1=Yes).
     "ai_quality": 0,
     "max_consecutive_defend_times": 1,
-    "amount_of_actions_per_round": 1,
-    "max_move_speed": 1,  # The max amount of steps a player can move at once by action "move"
+    "amount_of_actions_per_round": 2,
+    "max_move_speed": 2,  # The max amount of steps a player can move at once by action "move"
     "msg_summary_threshold": 20,
     "setting_options":  {
         "1": "num",
@@ -172,14 +172,10 @@ def Setting():
         ArkUI.workdir = "/ark/setting/"
         ArkUI.out("./current")
 
-        # 显示当前设置
+        # Display current settings
         display_data = []
         for num, key in InitBattleEnv["setting_options"].items():
-            if key in InitBattleEnv.get("tweak_args", {}):
-                tweak_count = len([t for t in InitBattleEnv["tweaks"] if t.type == f"-{key}"])
-                value_display = f"{C['MAGENTA']}{tweak_count}{ArkUI.get('./tweak-configured')}{C['RESET']}"
-            else:
-                value_display = f"{C['CYAN']}{InitBattleEnv[key]}{C['RESET']}"
+            value_display = f"{C['CYAN']}{InitBattleEnv[key]}{C['RESET']}"
 
             display_data.append((
                 f"{C['YELLOW']}{num}{C['RESET']}",
@@ -242,7 +238,7 @@ def build_snapshot_status(PipeData, args):
     return PipeData
 
 
-def build_able_enmK(PipeData, args):
+def build_able_enmK(PipeData: dict, args: noah.Core) -> dict:
     self = PipeData["self"]
     core = PipeData["core"]
 
@@ -268,7 +264,7 @@ def build_able_enmK(PipeData, args):
     return PipeData
 
 
-def build_able_engK(PipeData, args):
+def build_able_engK(PipeData: dict, args: noah.Core) -> dict:
     """Safer calculation of nearby enemy energy"""
     self = PipeData["self"]
     core = PipeData["core"]
@@ -289,7 +285,7 @@ def build_able_engK(PipeData, args):
     return PipeData
 
 
-def build_population_status(PipeData, args):
+def build_population_status(PipeData: dict, args: noah.Core) -> dict:
     """
     Builds population statistics required by the Noah Kernel.
 
@@ -315,7 +311,7 @@ def build_population_status(PipeData, args):
     return PipeData
 
 
-def build_energy_status(PipeData, args):
+def build_energy_status(PipeData, args: noah.Core):
     """
     Builds energy statistics for the Energy Battle game.
     This is game-specific and not required by the Noah Kernel.
@@ -363,21 +359,27 @@ CmdTable["-build_able_context"] += [
     build_able_engK,
 ]
 
-
+ModsToLoad = {}
 
 def Gaming():
     """This is the main game loop function."""
     timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
-    core = noah.Core(InitBattleEnv, BaseActDict, noah.IO(ArkUI.exp, logpath=f"./logs/noah_{timest}.gz"))
+    ArkMod = {
+        "BattleEnv": InitBattleEnv,
+        "ActDict": BaseActDict,
+        "ui": noah.IO(ArkUI.exp, logpath=f"./logs/noah_{timest}.gz"),
+        "CmdTable": CmdTable,
+        "mod_priority": 0,
+        "mod_name": "Ark",
+        }
+    ModsToLoad["Ark"] = copy.deepcopy(ArkMod)
+
+    core = noah.Core(ModsToLoad)
 
     core.ui.out(core.battle_env_snapshot(), mode="l", directly=True)
 
-    # Add CmdTable to the core
-    core.CmdTable = CmdTable
-
     core.mk_pldict()
     core.update_status()
-
 
     while True:  # The main turn-based loop.
         core.ui.write_log()

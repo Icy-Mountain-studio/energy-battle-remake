@@ -19,7 +19,7 @@ def crossfire_wave_eval(PipeData, args):
 
     for pl in core.PlDict.values():
         is_target = ((pl.real and pl != myself) or myself.team != pl.team) and \
-                        get_direction(myself.place, pl.place) == act.seth
+                        get_direction(myself.place, pl.place) == act.seth and abs(myself.place - pl.place) < act.distant
         if is_target:
             PipeData["target"] = pl.id
             PipeData = firecount(core, act, myself, PipeData)
@@ -32,7 +32,7 @@ def crossfire_wave_eval(PipeData, args):
 
 
 
-def auto_AOEseth(pl, core):
+def auto_AOEseth(pl, core, distance):
     """
     AI helper to determine the optimal direction for an AOE attack.
     It scans the battlefield to find the direction with the most enemies.
@@ -40,7 +40,7 @@ def auto_AOEseth(pl, core):
     tree_seth = [0, 0, 0]  # [-1 (down), 0 (straight), 1 (up)]
     for place, pls in core.status["pop"].items():
         if place != "all":
-            if place > pl.place:  # Above player
+            if place > pl.place and abs(place - pl.place) < distance:  # Above player
                 tree_seth[2] += len(pls["sum"])
                 if not pl.real:
                     tree_seth[2] -= len(pls.get(pl.team, []))
@@ -48,7 +48,7 @@ def auto_AOEseth(pl, core):
                 tree_seth[1] += len(pls["sum"])
                 if not pl.real:
                     tree_seth[1] -= len(pls.get(pl.team, []))
-            else:  # Below player
+            elif abs(place - pl.place) < distance:  # Below player
                 tree_seth[0] += len(pls["sum"])
                 if not pl.real:
                     tree_seth[0] -= len(pls.get(pl.team, []))
@@ -84,7 +84,7 @@ def wave_selecting(pl, core, auto):
                         core.ui.out("./error-no-seth")
                         continue
                 else:  # Auto-calculate direction
-                    seth = auto_AOEseth(pl, core)
+                    seth = auto_AOEseth(pl, core, core.BattleEnv["wave_distance"])
                     core.ui.out("./auto-seth", imp=[seth])
             except ValueError:
                 core.ui.out("./error-int-or-empty")
@@ -98,8 +98,8 @@ def wave_selecting(pl, core, auto):
         core.ui.typing_delay /= 10
         core.ui.indent -= 1
 
-    elif auto:  # AI Logic
-        act.seth = auto_AOEseth(pl, core)
+    else:  # AI Logic
+        act.seth = auto_AOEseth(pl, core, core.BattleEnv["wave_distance"])
 
     # Set properties for the resolution pipeline.
     act.target = True  # Indicates an AOE attack
@@ -110,18 +110,18 @@ def wave_selecting(pl, core, auto):
     act.distant = core.BattleEnv["wave_distance"]
     act.attacked_players = []
     act.pay(core)
-    
+
     return (True, act)
 
 
 def wave_ai(context):
     """AI weight for 'Energy Wave'."""
-    return context["self"].energy*100
+    return context["self"].energy*20
 
 
 def wave_able(context):
     """Ability check for 'Energy Wave'."""
-    return (context["self"].energy >= 4)
+    return (context["self"].energy >= 6)
 
 
 def advanced_wave_ai(context):

@@ -73,6 +73,9 @@ def blackhole_dealing(PipeData, args):
     for target_act in target.acts:
         if target_act.key != "7":
             target_act.acted = True
+        target_price = core.ActDict[target_act.key]["price"](target_act)
+        if target_price < 0 and target_act.payed:
+            target.energy -= -(target_price)
 
     block_out = ", ".join([core.ui.get(f"/act/{i}/name") for i in block])
     core.ui.out("./result", imp=[act.target, block_out, act.ownerID])
@@ -85,20 +88,20 @@ def blackhole_dealing(PipeData, args):
 
 
 def blackhole_price(act):
-    return 7
+    return 5
 
 def blackhole_able(context):
     """Ability check for 'Black Hole'."""
-    return (context["self"].energy >= 7)
+    return (context["self"].energy >= 5)
 
 
 def blackhole_ai(context):
     """AI weight for 'Black Hole'."""
-    return context["self"].energy*40
+    return context["self"].energy*10
 
 
 ActionProperties = { # Black Hole
-        "price": blackhole_price, "priority": 9999, "able": blackhole_able,
+        "price": blackhole_price, "priority": 9, "able": blackhole_able,
         "human_only": False, "ai": [blackhole_ai], "weight": 1,
         "selecting_exec": blackhole_selecting, "dealing_exec": [blackhole_dealing],
     }

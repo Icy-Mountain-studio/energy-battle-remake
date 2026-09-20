@@ -15,7 +15,7 @@ def charge_selecting(pl, core, auto):
     act = noah.Act(pl.id, "1")
     act.pay(core)
     act.energy_should_have = pl.energy
-    
+
     if pl.real:
         core.ui.typing_delay *= 5
         core.ui.out(["./dealed", "/share/endl"], imp=[pl.id, act.energy_should_have])
@@ -53,7 +53,7 @@ def advanced_charge_ai(context):
 
 
 ActionProperties = {  # Charge
-    "price": charge_price, "priority": 0, "able": able_forever,
+    "price": charge_price, "priority": 10, "able": able_forever,
     "human_only": False, "ai": [charge_ai, advanced_charge_ai], "weight": 1,
     "selecting_exec": charge_selecting, "dealing_exec": [charge_dealing],
 }

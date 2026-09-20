@@ -60,7 +60,7 @@ def shot_selecting(pl, core, auto):
                     else:
                         # Auto-calculate max possible firing level.
                         act.lv = 3
-                        while core.ActDict["2"]["price"](act) > s.energy:
+                        while core.ActDict["2"]["price"](act) > s.energy or act.lv > tg.HP:
                             act.lv -= 1
                         core.ui.out("./auto-lv", imp=[act.lv])
 
@@ -151,7 +151,7 @@ def shot_selecting(pl, core, auto):
         act.lv = 3
 
         # Calculate the maximum affordable firepower.
-        while core.ActDict["2"]["price"](act) > s.energy:
+        while core.ActDict["2"]["price"](act) > s.energy or act.lv > core.status["snap"][target][0]:
             act.lv -= 1
             if act.lv < 1:
                 core.RaiseError(

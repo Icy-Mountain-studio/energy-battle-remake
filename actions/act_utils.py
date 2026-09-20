@@ -440,5 +440,5 @@ def able_forever(context):
     return True
 
 def wave_price(act):
-    return 4
+    return 6
 
