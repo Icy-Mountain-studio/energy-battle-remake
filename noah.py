@@ -402,7 +402,7 @@ class Player():
 
         while len(result) < core.BattleEnv["amount_of_actions_per_round"]:
             auto = not self.real
-            able_actions, ai_weights = self.build_able(core)
+            able_actions, ai_weights = self.evaluate_ability_and_weights(core)
             if not able_actions:
                 # No actions avaliable
                 core.deaths.append(self.id)
@@ -504,7 +504,7 @@ class Player():
                 [decreasion, origin, core.ui.get(f'/act/{act_key}/name')])
 
 
-    def build_able(self, core: Core) -> tuple[list]:
+    def evaluate_ability_and_weights(self, core: Core) -> tuple[list]:
         """
         Calculates which actions are currently available to this player based on game state.
 
@@ -521,8 +521,8 @@ class Player():
         ai_weights = []
 
         context = {"self": self, "core": core}
-        context = core.Exec("-build_able_context",
-                            "Player.build_able", context)
+        context = core.Exec("-evaluate_ability_and_weights_context",
+                            "Player.evaluate_ability_and_weights", context)
 
         # Iterate through all possible actions to see which are usable.
         for key, act in core.ActDict.items():
@@ -593,7 +593,7 @@ def SelectAct_WorkerFunc(task: tuple[Player, Core]):
     player, core = task
     result_acts = []
 
-    able_actions, ai_weights = player.build_able(core)
+    able_actions, ai_weights = player.evaluate_ability_and_weights(core)
     if not able_actions:
         # This player has no available actions.
         # Returns empty acts, and player ID for potential "no action" log.
@@ -603,7 +603,7 @@ def SelectAct_WorkerFunc(task: tuple[Player, Core]):
     return [result_acts, []]
 
 
-def PipeWorkFlow(PipeData, steps: list, args: tuple):
+def PipeWorkFlow(PipeData: dict, steps: list, args: tuple | list):
     """
     Implements a stream processing pipeline architecture.
     It takes an input stream, passes it sequentially through a list of functions (`steps`),
@@ -620,19 +620,10 @@ def PipeWorkFlow(PipeData, steps: list, args: tuple):
     OutData = PipeData
     for step_func in steps:
         OutData = step_func(OutData, args)
+        if OutData and "BREAK_PIPE" in OutData:
+                return OutData
     return OutData
 
-
-default_cmd_table = {
-
-    "-update_status": [
-
-    ],
-
-    "-build_able_context": [
-
-    ],
-}
 
 
 class Core():
@@ -719,6 +710,9 @@ class Core():
             # Sort the mods by their priorities
             self.Mods = sorted(NewMods.values(), key=lambda d: d.get("mod_priority", 0))
 
+        for mod in self.Mods:
+            mod["mod_reload"]()
+        
         try:
             # Merging Mods by their priorities
             self.MergedMod: list = reduce(deep_merge, self.Mods)
@@ -748,6 +742,8 @@ class Core():
         # A table that contain the names and PipeWorkFlows of kernel commands
         self.CmdTable: dict = self.MergedMod.get("CmdTable", default_cmd_table)
 
+    def RunMainLoop(self):
+        self.Exec("-MainLoopWorkFLow", "GameMainLoop", {"core": self, "stages": []})
 
     def update_status(self):
         """
@@ -916,6 +912,7 @@ class Core():
         self.deaths = []
 
     def clean_round(self):
+        
         """Clears temporary round-specific data to prepare for the next round."""
         self.ActSign = {}
         for pl in self.PlDict.values():
@@ -948,7 +945,7 @@ class Core():
 
     def RaiseError(self, domain: str, msg: str):
         mode = "l"
-        if self.debug:
+        if not self.debug:
             mode += "s"
         self.ui.inp(f"[{domain}] ERROR: {msg}",
                     mode=mode, directly=True, color="RED")
@@ -962,9 +959,12 @@ class Core():
             try:
                 return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
             except Exception as e:
-                self.RaiseError(domain, f"Kernel command '{
-                                cmd_name}' failed: {e}")
-                return {}
+                if not self.debug:
+                    self.RaiseError(domain, f"Kernel command '{
+                                    cmd_name}' failed: {e}")
+                    return {}
+                else:
+                    raise e
 
     def DealEvents(self):
         """
@@ -977,8 +977,11 @@ class Core():
             try:
                 event.happen(self)
             except Exception as e:
-                self.RaiseError("Core.DealEvents", f"Event '{
-                                event.type}' failed: {e}")
+                if not self.debug:
+                    self.RaiseError("Core.DealEvents", f"Event '{
+                                    event.type}' failed: {e}")
+                else:
+                    raise e
 
         # Clear the EventBus
         self.EventBus.clear()
@@ -1017,6 +1020,22 @@ class Core():
         msg.append(f"{'='*split_str_lenth}")
 
         return "\n".join(msg)
+
+    def round_title(self):
+        self.ui.out(["/share/endl", "/core/round-title", "/share/endl"], imp=[self.rounds], color="WHITE")
+
+
+default_cmd_table = {
+
+    "-update_status": [
+    ],
+
+    "-evaluate_ability_and_weights_context": [
+    ],
+
+    "-MainLoopWorkFLow": [
+    ],
+}
 
 
 class Event():

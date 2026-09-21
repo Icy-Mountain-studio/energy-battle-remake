@@ -1,6 +1,9 @@
 import noah
 from localize import Expression
 
+if not noah.os.path.exists("./logs"):
+    noah.os.mkdir("logs")
+
 # InitBattleEnv: Initial Battle Environment. A dictionary holding the default parameters for a game session.
 InitBattleEnv = {
     "num": 10,      # Total number of players.
@@ -52,7 +55,7 @@ def build_snapshot_status(PipeData, args):
     return PipeData
 
 
-def build_able_enmK(PipeData: dict, args: noah.Core) -> dict:
+def evaluate_ability_and_weights_enmK(PipeData: dict, args: noah.Core) -> dict:
     self = PipeData["self"]
     core = PipeData["core"]
 
@@ -78,7 +81,7 @@ def build_able_enmK(PipeData: dict, args: noah.Core) -> dict:
     return PipeData
 
 
-def build_able_engK(PipeData: dict, args: noah.Core) -> dict:
+def evaluate_ability_and_weights_engK(PipeData: dict, args: noah.Core) -> dict:
     """Safer calculation of nearby enemy energy"""
     self = PipeData["self"]
     core = PipeData["core"]
@@ -155,6 +158,47 @@ def build_energy_status(PipeData, args: noah.Core):
 
     return PipeData
 
+def write_core_log(PipeData: dict, args):
+    PipeData["core"].ui.write_log()
+    PipeData["stages"].append("write_core_log")
+    return PipeData
+
+def next_round(PipeData: dict, args):
+    PipeData["core"].rounds += 1
+    PipeData["stages"].append("next_round")
+    return PipeData
+
+def clean_round_workflow(PipeData: dict, args):
+    PipeData["core"].clean_round()
+    PipeData["stages"].append("clean_round")
+    return PipeData
+
+def round_title_workflow(PipeData: dict, args):
+    PipeData["core"].round_title()
+    PipeData["stages"].append("round_title")
+    return PipeData
+
+def SelectAct_workflow(PipeData: dict, args):
+    PipeData["core"].SelectAct()
+    PipeData["stages"].append("SelectAct")
+    if PipeData["core"].exit_game:
+        PipeData["BREAK_PIPE"] = True
+    return PipeData
+
+def DealAct_workflow(PipeData: dict, args):
+    PipeData["core"].DealAct()
+    PipeData["stages"].append("DealAct")
+    return PipeData
+
+def rm_deaths_workflow(PipeData: dict, args):
+    PipeData["core"].rm_deaths()
+    PipeData["stages"].append("rm_deaths")
+    return PipeData
+
+def update_status_workflow(PipeData: dict, args):
+    PipeData["core"].update_status()
+    PipeData["stages"].append("update_status")
+    return PipeData
 
 CmdTable = noah.default_cmd_table
 
@@ -164,19 +208,33 @@ CmdTable["-update_status"] += [
     build_snapshot_status,
 ]
 
-CmdTable["-build_able_context"] += [
-    build_able_enmK,
-    build_able_engK,
+CmdTable["-evaluate_ability_and_weights_context"] += [
+    evaluate_ability_and_weights_enmK,
+    evaluate_ability_and_weights_engK,
 ]
 
-timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
+CmdTable["-MainLoopWorkFLow"] += [
+    write_core_log,
+    next_round,
+    clean_round_workflow,
+    round_title_workflow,
+    SelectAct_workflow,
+    DealAct_workflow,
+    rm_deaths_workflow,
+    update_status_workflow,
+]
+
+def ReloadMod():
+    timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
+    ModContents["ui"] = noah.IO(Expression[ModContents["chosen_lang_code"]], logpath=f"./logs/noah_{timest}.gz")
 
 ModContents = {
     "BattleEnv": InitBattleEnv,
     "ActDict": BaseActDict,
-    "ui": noah.IO(Expression["zh_cn"], logpath=f"./logs/noah_{timest}.gz"),
     "CmdTable": CmdTable,
     "mod_priority": 0,
-    "mod_name": "FakeArk",
+    "mod_name": "Ark",
+    "mod_reload": ReloadMod
     }
+
 

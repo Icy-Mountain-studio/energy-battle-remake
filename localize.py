@@ -7,7 +7,7 @@ from noah import C
 Expression = {
 
 "en_us": {
-    '/ark/round-title': "Round $0\n"+'-'*20,
+    '/core/round-title': "Round $0\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}Player $0 {C['GREEN']}[HP $1 Energy $2 Pos $3]{C['RESET']}\nRec: $4[Enter] >  ",
@@ -163,7 +163,7 @@ Expression = {
 },
 
 "zh_cn": {
-    '/ark/round-title': "第$0回合\n"+'-'*20,
+    '/core/round-title': "第$0回合\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act-multi': f"{C['WHITE']}玩家$0 {C['GREEN']}[血量$1 能量$2 位置$3]{C['RESET']}\n已行动($5/$6) 推荐$4[Enter] >  ",
@@ -328,7 +328,7 @@ Expression = {
 
 
 "zh_tw": {
-    '/ark/round-title': "第$0回合\n"+'-'*20,
+    '/core/round-title': "第$0回合\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}玩家$0 {C['GREEN']}[血量$1 能量$2 位置$3]{C['RESET']}\n推薦$4[Enter] >  ",
@@ -486,7 +486,7 @@ Expression = {
 
 
 "ja_jp": {
-    '/ark/round-title': "第$0ラウンド\n"+'-'*20,
+    '/core/round-title': "第$0ラウンド\n"+'-'*20,
     '/share/endl': "",
     '/share/dr-endl': "\n",
     '/core/ask-for-act': f"{C['WHITE']}プレイヤー$0 {C['GREEN']}[HP $1 エネルギー $2 位置 $3]{C['RESET']}\n推奨 $4[Enter] >  ",

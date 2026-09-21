@@ -31,7 +31,6 @@ from noah import C
 from localize import Expression
 import copy
 
-
 # A simple, data-driven language selector function.
 # It's designed to be easily integrated into the Ark/Noah project structure.
 def select_language(expressions: dict, default_lang: str = "en_us") -> str:
@@ -100,38 +99,6 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 
 
 
-# InitBattleEnv: Initial Battle Environment. A dictionary holding the default parameters for a game session.
-InitBattleEnv = {
-    "num": 10,      # Total number of players.
-    "real": 1,      # Number of human players.
-    "map": 3,       # Map size (number of vertical levels above and below the center).
-    "initHP": 15,    # Initial HP for each player.
-    "shot_distance": 1,    # Range of the 'Shoot' action.
-    "wave_distance": 3,    # Range of the 'Energy Wave' action (effectively infinite).
-    "team_size": 1,   # Number of players per AI team (1 means free-for-all).
-    "assist_team": 0, # Should the first AI team cooperate with humans? (0=No, 1=Yes).
-    "ai_quality": 0,
-    "max_consecutive_defend_times": 1,
-    "amount_of_actions_per_round": 2,
-    "max_move_speed": 2,  # The max amount of steps a player can move at once by action "move"
-    "msg_summary_threshold": 20,
-    "setting_options":  {
-        "1": "num",
-        "2": "real",
-        "3": "map",
-        "4": "max_move_speed",
-        "5": "initHP",
-        "6": "shot_distance",
-        "7": "wave_distance",
-        "8": "team_size",
-        "9": "assist_team",
-        "10": "ai_quality",
-        "11": "max_consecutive_defend_times",
-        "12": "amount_of_actions_per_round",
-        "13": "msg_summary_threshold",
-    },
-}
-
 
 # Terminal check
 try:
@@ -155,12 +122,9 @@ ArkUI.workdir = "/ark/"
 ArkUI.out("./welcome", color="YELLOW")
 
 
-from actions import BaseActDict
-
-
 def Setting():
     """A function where player can modify the BattleEnv"""
-    global InitBattleEnv
+    ConfiguredBattleEnv = copy.deepcopy(noah.reduce(noah.deep_merge, sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0)))["BattleEnv"])
 
     ArkUI.typing_delay = 0.001
     ArkUI.workdir = "/ark/setting/"
@@ -174,8 +138,8 @@ def Setting():
 
         # Display current settings
         display_data = []
-        for num, key in InitBattleEnv["setting_options"].items():
-            value_display = f"{C['CYAN']}{InitBattleEnv[key]}{C['RESET']}"
+        for num, key in ConfiguredBattleEnv["setting_options"].items():
+            value_display = f"{C['CYAN']}{ConfiguredBattleEnv[key]}{C['RESET']}"
 
             display_data.append((
                 f"{C['YELLOW']}{num}{C['RESET']}",
@@ -194,10 +158,10 @@ def Setting():
             ArkUI.out("/share/endl")
             break
 
-        if choice in InitBattleEnv["setting_options"]:
-            setting_key = InitBattleEnv["setting_options"][choice]
+        if choice in ConfiguredBattleEnv["setting_options"]:
+            setting_key = ConfiguredBattleEnv["setting_options"][choice]
             setting_name = ArkUI.get(f"./desc/{setting_key}")
-            current_value = InitBattleEnv[setting_key]
+            current_value = ConfiguredBattleEnv[setting_key]
             new_value_str = ArkUI.inp("./input-new", imp=[current_value])
             ArkUI.out("/share/endl")
 
@@ -208,7 +172,7 @@ def Setting():
                 continue
             else:
                 try:
-                    InitBattleEnv[setting_key] = int(new_value_str)
+                    ConfiguredBattleEnv[setting_key] = int(new_value_str)
                 except ValueError:
                     ArkUI.out("./error-not-int")
 
@@ -218,148 +182,23 @@ def Setting():
             ArkUI.out("./error-invalid-choice")
             ArkUI.out("/share/endl")
 
-
+    ModsToLoad["Settings"] = {
+        "BattleEnv": ConfiguredBattleEnv,
+        "mod_priority": 1,
+        "mod_name": "Settings",
+        "mod_reload": lambda: None
+        }
+    
     ArkUI.workdir = "/ark/"
 
 
-def build_snapshot_status(PipeData, args):
-    """
-    Builds a snapshot of all players' current state.
-
-    Returns:
-        dict: {"snap": {player_id: [HP, energy, place, team], ...}}
-    """
-    core = args
-    snap_status = {}
-    for pl in core.PlDict.values():
-        snap_status[pl.id] = [pl.HP, pl.energy, pl.place, pl.team, pl.real]
-
-    PipeData["snap"] = snap_status
-    return PipeData
-
-
-def build_able_enmK(PipeData: dict, args: noah.Core) -> dict:
-    self = PipeData["self"]
-    core = PipeData["core"]
-
-    # --- Environment variable generation for decision making ---
-    nearby_places = range(self.place - 1, self.place + 2)
-
-    # --- Safer calculation of nearby enemy population ---
-    side_enm = 0
-    for i in nearby_places:
-        place_pop_stats = core.status["pop"].get(i, {})
-        total_pop_at_place = len(place_pop_stats.get("sum", []))
-        my_team_pop_at_place = len(place_pop_stats.get(self.team, []))
-        side_enm += total_pop_at_place - my_team_pop_at_place
-
-    all_enm = core.status["pop"].get("all", 0)
-    enmK = side_enm / all_enm if all_enm > 0 else 0 # Ratio of nearby enemies to total enemies.
-
-    PipeData["side_enm"] = side_enm
-    PipeData["all_enm"] = all_enm
-    PipeData["nearby_places"] = nearby_places
-    PipeData["enmK"] = enmK
-
-    return PipeData
-
-
-def build_able_engK(PipeData: dict, args: noah.Core) -> dict:
-    """Safer calculation of nearby enemy energy"""
-    self = PipeData["self"]
-    core = PipeData["core"]
-    nearby_places = PipeData["nearby_places"]
-
-    side_eng = 0
-    for i in nearby_places:
-        place_eng_stats = core.status["energy"].get(i, {})
-        total_eng_at_place = place_eng_stats.get("sum", 0)
-        my_team_eng_at_place = place_eng_stats.get(self.team, 0)
-        side_eng += total_eng_at_place - my_team_eng_at_place
-
-    all_eng = core.status["energy"].get("all", 0)
-    engK = side_eng / all_eng if all_eng > 0 else 0 # Ratio of nearby enemy energy to total enemy energy.
-
-    PipeData["side_eng"] = side_eng
-    PipeData["engK"] = engK
-    return PipeData
-
-
-def build_population_status(PipeData: dict, args: noah.Core) -> dict:
-    """
-    Builds population statistics required by the Noah Kernel.
-
-    Returns:
-        dict: {"pop": {place: {team: [ids], "sum": [ids]}, "all": total}}
-    """
-    core = args
-    pop_status = {}
-
-    for pl in core.PlDict.values():
-        if pl.place not in pop_status:
-            pop_status[pl.place] = {pl.team: [pl.id], "sum": [pl.id]}
-        elif pl.team not in pop_status[pl.place]:
-            pop_status[pl.place][pl.team] = [pl.id]
-            pop_status[pl.place]["sum"].append(pl.id)
-        else:
-            pop_status[pl.place][pl.team].append(pl.id)
-            pop_status[pl.place]["sum"].append(pl.id)
-
-    pop_status["all"] = len(core.PlDict)
-    PipeData["pop"] = pop_status
-
-    return PipeData
-
-
-def build_energy_status(PipeData, args: noah.Core):
-    """
-    Builds energy statistics for the Energy Battle game.
-    This is game-specific and not required by the Noah Kernel.
-
-    Returns:
-        dict: {"energy": {place: {team: total, "sum": total}, "all": total}}
-    """
-    core = args
-
-    energy_status = {}
-    all_energy = 0
-
-    for pl in core.PlDict.values():
-        if pl.place not in energy_status:
-            energy_status[pl.place] = {pl.team: pl.energy, "sum": pl.energy}
-        elif pl.team not in energy_status[pl.place]:
-            energy_status[pl.place][pl.team] = pl.energy
-            energy_status[pl.place]["sum"] = energy_status[pl.place].get("sum", 0) + pl.energy
-        else:
-            energy_status[pl.place][pl.team] += pl.energy
-            energy_status[pl.place]["sum"] += pl.energy
-
-        all_energy += pl.energy
-
-    energy_status["all"] = all_energy
-    PipeData["energy"] = energy_status
-
-    return PipeData
-
-
-if not noah.os.path.exists("./logs"):
-    noah.os.mkdir("logs")
-
-
-CmdTable = noah.default_cmd_table
-
-CmdTable["-update_status"] += [
-    build_population_status,
-    build_energy_status,
-    build_snapshot_status,
-]
-
-CmdTable["-build_able_context"] += [
-    build_able_enmK,
-    build_able_engK,
-]
-
+DefaultMods = ["ark_mod.py"]
 ModsToLoad = {}
+
+for mod in DefaultMods:
+    mod_object = noah.import_module_from_path(mod)
+    mod_object.ModContents["chosen_lang_code"] = chosen_lang_code
+    ModsToLoad[mod_object.ModContents["mod_name"]] = mod_object.ModContents
 
 def ModManager():
     ArkUI.workdir = "/ark/mod_manager/"
@@ -371,6 +210,7 @@ def ModManager():
                 new_mod = noah.import_module_from_path(user_input)
             else:
                 break
+
         except FileNotFoundError:
             ArkUI.out(["./file_system_failure", "/share/endl"], color="RED")
             continue
@@ -379,8 +219,10 @@ def ModManager():
             continue
 
         try:
+            new_mod.ModContents["chosen_lang_code"] = chosen_lang_code
+            new_mod.ModContents["mod_reload"]()
             ModsToLoad[new_mod.ModContents["mod_name"]] = new_mod.ModContents
-        except AttributeError:
+        except (AttributeError, KeyError):
             ArkUI.out(["./metadata_incomplete", "/share/endl"], color="MAGENTA")
             continue
 
@@ -390,16 +232,8 @@ def ModManager():
 
 def Gaming():
     """This is the main game loop function."""
-    timest = noah.time.strftime("%Y-%m-%d_%H-%M-%S")
-    ArkMod = {
-        "BattleEnv": InitBattleEnv,
-        "ActDict": BaseActDict,
-        "ui": noah.IO(ArkUI.exp, logpath=f"./logs/noah_{timest}.gz"),
-        "CmdTable": CmdTable,
-        "mod_priority": 0,
-        "mod_name": "Ark",
-        }
-    ModsToLoad["Ark"] = ArkMod
+    for Mod in ModsToLoad.values():
+        Mod["mod_reload"]()
 
     core = noah.Core(ModsToLoad)
 
@@ -409,20 +243,11 @@ def Gaming():
     core.update_status()
 
     while True:  # The main turn-based loop.
-        core.ui.write_log()
-        core.clean_round()
-        core.rounds += 1
+        core.RunMainLoop()
 
-        core.ui.out(["/share/endl", "/ark/round-title", "/share/endl"], imp=[core.rounds], color="WHITE")
-
-        core.SelectAct()
         if core.exit_game:
             core.ui.out(["/ark/break", "/share/endl"])
             break
-
-        core.DealAct()
-        core.rm_deaths()
-        core.update_status()
 
         teams = []
         for place in core.status["pop"].keys():
