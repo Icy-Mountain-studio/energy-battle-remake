@@ -12,7 +12,11 @@ Project initiated: 2025.8.2
 Last updated: 2026.9.22
 """
 
-import readline
+try:
+    import readline
+except ImportError: # Windows do not have this lib
+    pass
+
 import gzip
 import sys
 import time
