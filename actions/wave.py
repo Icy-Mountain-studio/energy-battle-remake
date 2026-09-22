@@ -124,12 +124,6 @@ def wave_able(context):
     return (context["self"].energy >= 6)
 
 
-def advanced_wave_ai(context):
-    """Advanced AI's logic for Energy Wave. Becomes more willing when aggressive."""
-    aggression = _calculate_aggression(context)
-    base_desire = context["self"].energy * 100
-    return base_desire * aggression
-
 ActionProperties = {  # Energy Wave
     "price": wave_price, "priority": -1, "able": wave_able,
     "human_only": False, "ai": [wave_ai], "weight": 1,

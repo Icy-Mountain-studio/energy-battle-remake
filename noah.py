@@ -7,7 +7,7 @@ The Noah Kernel: A turn-based game engine.
 Originally spun off from the development of the game 'Energy Battle'.
 
 Project initiated: 2025.8.2
-Last updated: 2025.10.19
+Last updated: 2026.9.22
 """
 
 import readline
@@ -704,7 +704,7 @@ class Core():
         # A table that contain the Event objects
         self.EventBus: list = []
 
-        self.debug: bool = True  # The debug mode of the Core
+        self.debug: bool = False  # The debug mode of the Core
 
 
     def mk_pldict(self):
@@ -804,6 +804,13 @@ class Core():
 
         all_results = []
 
+        # Process human players sequentially.
+        for pl in human_players:
+            all_results.append(SelectAct_WorkerFunc([pl, self]))
+            # if one of the human player asked to leave the game
+            if self.exit_game:
+                return 0
+
         # Process AI players using `map` for a clean, parallel-ready structure.
         if ai_players:
             # Show progress bar for a large number of AIs.
@@ -830,14 +837,8 @@ class Core():
 
             if show_progress:
                 print(self.ui.get('/core/ai-completed').ljust(40), end='\n\n')
-        
-        # Process human players sequentially.
-        for pl in human_players:
-            all_results.append(SelectAct_WorkerFunc([pl, self]))
-            # if one of the human player asked to leave the game
-            if self.exit_game:
-                return 0
-                
+
+
         # Aggregate results and register the chosen actions.
         for acts, dead_ids in all_results:
             self.deaths.extend(dead_ids)
@@ -1093,4 +1094,5 @@ class Event():
             core.RaiseError(
                 self.domain, f"One Event object has happened but try to happend again (Type {self.type}).")
         self.has_happened = True
+
 

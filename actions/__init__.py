@@ -3,7 +3,7 @@
 """
 
 import noah
-from actions import charge, shot, defend, move, reflect, wave, blackhole, ShowStatus, ShowRules, breaking
+from actions import charge, shot, defend, move, reflect, wave, blackhole, ShowRules, breaking
 
 # The master Action Dictionary that defines the entire game's mechanics for the Noah Kernel.
 BaseActDict = {
@@ -15,7 +15,6 @@ BaseActDict = {
     "6": wave.ActionProperties,
     "7": blackhole.ActionProperties,
     "rl": ShowRules.ActionProperties,
-    "stt": ShowStatus.ActionProperties,
     "bk": breaking.ActionProperties
 }
 

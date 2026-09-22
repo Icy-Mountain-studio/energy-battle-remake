@@ -14,6 +14,6 @@ def break_selecting(pl, core, auto):
 ActionProperties = {  # Surrender/Break
     "price": free_of_charge, "priority": 0, "able": able_forever,
     "human_only": True, "ai": [None], "weight": 0,
-    "selecting_exec": break_selecting, "d_exec": [],
+    "selecting_exec": break_selecting, "dealing_exec": [],
 }
 

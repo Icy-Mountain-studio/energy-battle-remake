@@ -45,13 +45,6 @@ def charge_ai(context):
     return min((100/(context["self"].energy+1))*3, 500)
 
 
-def advanced_charge_ai(context):
-    """Advanced AI's logic for charging. Becomes less willing to charge when aggressive."""
-    aggression = _calculate_aggression(context)
-    base_desire = min((100/(context["self"].energy+1))*3, 500)
-    return base_desire / aggression
-
-
 ActionProperties = {  # Charge
     "price": charge_price, "priority": 10, "able": able_forever,
     "human_only": False, "ai": [charge_ai], "weight": 1,

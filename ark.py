@@ -10,26 +10,27 @@ We need a frontend as elegant as the Noah backend: ark.py
 I hereby name it the Ark Frontend!
 
 Together, they create:
-Energy Battle - Remake v1.2-7
+Energy Battle - Remake v1.3-0
 
 This is a turn-based, many-vs-many combat game with a command-line interface.
 
 The project has undergone two complete rewrites since its inception:
-Energy Battle -> Energy Battle-Remake 1.1 -> Energy Battle-Remake 1.2
+Energy Battle -> Energy Battle-Remake 1.1 -> Energy Battle-Remake 1.2/1.3
 
-Energy Battle-Remake 1.2 utilizes my newly developed game kernel,
+Energy Battle-Remake 1.3 utilizes my newly developed game kernel,
 which I call the "Noah Kernel".
 
 As you can see, the project is still far from complete.
 
 Project initiated: 2025.8.2
-Last updated: 2025.10.19
+Last updated: 2026.9.22
 """
 
 import noah  # Import the Noah kernel, with all due ceremony.
 from noah import C
 from localize import Expression
 import copy
+import ark_menus
 
 # A simple, data-driven language selector function.
 # It's designed to be easily integrated into the Ark/Noah project structure.
@@ -129,65 +130,7 @@ def Setting():
          sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0)))["BattleEnv"]
          )
 
-    noah.clear_screen()
-
-    org_delay = ArkUI.typing_delay
-    ArkUI.typing_delay = 0.005
-    ArkUI.workdir = "/ark/setting/"
-
-    while True:
-        noah.clear_screen()
-        ArkUI.out("./title")
-        ArkUI.out("./intro")
-        
-        ArkUI.workdir = "/ark/setting/"
-        ArkUI.out("./current")
-
-        # Display current settings
-        display_data = []
-        for num, key in ConfiguredBattleEnv["setting_options"].items():
-            value_display = f"{C['CYAN']}{ConfiguredBattleEnv[key]}{C['RESET']}"
-
-            display_data.append((
-                f"{C['YELLOW']}{num}{C['RESET']}",
-                ArkUI.get(f"./desc/{key}"),
-                value_display
-            ))
-
-        ArkUI.out(noah.table(display_data, f"{C['YELLOW']}$0{C['RESET']}. $1 {C['YELLOW']}|{C['RESET']} {C['CYAN']}$2{C['RESET']}"), directly=True)
-        ArkUI.out("/share/endl")
-
-        choice = ArkUI.inp("./prompt")
-        ArkUI.out("/share/endl")
-
-        if choice == "":
-            ArkUI.inp("./exit")
-            noah.clear_screen()
-            break
-
-        if choice in ConfiguredBattleEnv["setting_options"]:
-            setting_key = ConfiguredBattleEnv["setting_options"][choice]
-            setting_name = ArkUI.get(f"./desc/{setting_key}")
-            current_value = ConfiguredBattleEnv[setting_key]
-            new_value_str = ArkUI.inp("./input-new", imp=[current_value])
-            ArkUI.out("/share/endl")
-
-            if new_value_str == "":
-                # Remain the same
-                ArkUI.out("./updated", imp=[setting_name, current_value])
-                ArkUI.out("/share/endl")
-                continue
-            else:
-                try:
-                    ConfiguredBattleEnv[setting_key] = int(new_value_str)
-                except ValueError:
-                    ArkUI.out("./error-not-int")
-
-            ArkUI.out("/share/endl")
-
-        else:
-            ArkUI.out("./error-invalid-choice")
-            ArkUI.out("/share/endl")
+    ark_menus.Menu_Setting(ArkUI, ConfiguredBattleEnv)
 
     ModsToLoad["Setting"] = {
         "BattleEnv": noah.Override(ConfiguredBattleEnv),
@@ -195,10 +138,8 @@ def Setting():
         "mod_name": "Setting",
         }
 
-    ArkUI.typing_delay = org_delay
 
-
-DefaultMods = ["ark_mod.py"]
+DefaultMods = ["ark_mod.py", "sys_tools_mod.py"]
 ModsToLoad = {}
 
 for mod in DefaultMods:
@@ -206,118 +147,9 @@ for mod in DefaultMods:
     mod_object.ModContents["chosen_lang_code"] = chosen_lang_code
     ModsToLoad[mod_object.ModContents["mod_name"]] = mod_object.ModContents
 
+
 def ModManager():
-    ArkUI.workdir = "/ark/mod_manager/"
-
-    noah.clear_screen()
-    ArkUI.out("./title")
-
-    while True:
-        mod_list = sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0), reverse=True)
-        ArkUI.indent = 0
-        if ModsToLoad:
-            org_delay = ArkUI.typing_delay
-            ArkUI.typing_delay = 0
-            ArkUI.out("./demo")
-            ArkUI.out(noah.table([(mod_list.index(mod)+1, mod["mod_name"], mod.get("mod_priority", 0)) for mod in mod_list], f"{C['CYAN']}$0{C['RESET']}.\t$1\t{C['GRAY']}[$2]{C['RESET']}", "\n"), directly=True)
-            ArkUI.typing_delay = org_delay
-        ArkUI.out([
-                "/share/endl",
-                "./operation-add",
-                "./operation-remove",
-                "./operation-adjust-priority",
-                "/share/endl",
-            ])
-        operation_code = ArkUI.inp(["./ask-for-operation", "/share/endl"])
-        ArkUI.indent += 1
-
-        if operation_code == "1":
-            try:
-                ArkUI.out("/share/endl")
-                user_input = ArkUI.inp("./new_mod_path")
-                ArkUI.out("/share/endl")
-                if user_input:
-                    new_mod = noah.import_module_from_path(user_input)
-                else:
-                    continue
-
-            except FileNotFoundError:
-                ArkUI.out(["./file_system_failure", "/share/endl"], color="RED")
-                continue
-            except Exception as e:
-                ArkUI.out(["./import_failure", "/share/endl"], color="RED")
-                continue
-
-            try:
-                new_mod.ModContents["chosen_lang_code"] = chosen_lang_code
-                ModsToLoad[new_mod.ModContents["mod_name"]] = new_mod.ModContents
-            except (AttributeError, KeyError):
-                ArkUI.out(["./metadata_incomplete", "/share/endl"], color="MAGENTA")
-                continue
-
-            ArkUI.out(["./add-succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
-
-        elif operation_code == "2":
-            mod_going_to_remove = ArkUI.inp("./ask-for-modcode-to-remove")
-            try:
-                if not mod_going_to_remove:
-                    continue
-                mod_going_to_remove = int(mod_going_to_remove) - 1
-                name = mod_list[mod_going_to_remove]["mod_name"]
-                ArkUI.out("./selected", imp=[name])
-                del ModsToLoad[mod_list[mod_going_to_remove]["mod_name"]]
-                ArkUI.out("./remove-succeed", imp=[name], color="GREEN")
-
-            except (KeyError, IndexError):
-                ArkUI.out("/share/not-found", color="RED")
-
-            except ValueError:
-                ArkUI.out("./error-int", color="RED")
-
-            finally:
-                ArkUI.out("/share/endl")
-
-        elif operation_code == "3":
-            mod_going_to_reprior = ArkUI.inp("./ask-for-modcode-to-reprior")
-            try:
-                if not mod_going_to_reprior:
-                    ArkUI.out("/share/endl")
-                    continue
-                mod_going_to_reprior = int(mod_going_to_reprior) - 1
-
-            except ValueError:
-                ArkUI.out(["./error-int", "/share/endl"], color="RED")
-                continue
-
-
-            try:
-                ArkUI.out("./selected", imp=[mod_list[mod_going_to_reprior]["mod_name"]])
-                new_priority = float(ArkUI.inp("./ask-new-priority-for-mod"))
-                if new_priority.is_integer():
-                    new_priority = int(new_priority)
-                mod_list[mod_going_to_reprior]["mod_priority"] = new_priority
-                ArkUI.out("./priority-modified-succeed", imp=[mod_list[mod_going_to_reprior]["mod_name"], new_priority], color="GREEN")
-                ArkUI.out("/share/endl")
-
-            except ValueError:
-                ArkUI.out("./float-or-int", color="RED")
-
-            except (KeyError, IndexError):
-                ArkUI.out("/share/not-found", color="RED")
-
-            finally:
-                ArkUI.out("/share/endl")
-
-        elif not operation_code:
-            ArkUI.out("/share/endl")
-            break
-
-        else:
-            ArkUI.out("/share/not-found", color="RED")
-
-    ArkUI.indent = 0
-    ArkUI.inp("./exit", color="YELLOW")
-    noah.clear_screen()
+    ark_menus.Menu_ModManager(ArkUI, ModsToLoad, chosen_lang_code, is_core=False)
 
 
 def Gaming():
