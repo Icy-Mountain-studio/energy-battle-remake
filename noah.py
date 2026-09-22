@@ -96,6 +96,11 @@ def import_module_from_path(file_path: str):
         if path_added:
             sys.path.remove(dir_path)
 
+class Override:
+    """If data is wrapped by this function, it will directly cover other data during deep_merge"""
+    def __init__(self, value):
+        self.value = value
+
 def remove_none(obj):
     if isinstance(obj, dict):
         return {k: remove_none(v) for k, v in obj.items() if v is not None}
@@ -118,9 +123,11 @@ def deep_merge(low: dict, high: dict):
             result[key] = deep_merge(result[key], value)
         elif key in result and isinstance(result[key], list) and isinstance(value, list):
             result[key] = result[key] + remove_none(value)
+        elif isinstance(value, Override):
+            result[key] = value.value
         else:
             result[key] = remove_none(value)
-            
+
     return result
 
 
@@ -515,7 +522,10 @@ class Player():
             self.HP -= decrease
 
         if decrease != 0:
-            core.PlDict[origin].outd += decrease
+            try:
+                core.PlDict[origin].outd += decrease
+            except KeyError:
+                pass
             self.HPlog.append(
                 [decrease, origin, core.ui.get(f'/act/{act_key}/name')])
 

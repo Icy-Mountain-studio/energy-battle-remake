@@ -190,7 +190,7 @@ def Setting():
             ArkUI.out("/share/endl")
 
     ModsToLoad["Setting"] = {
-        "BattleEnv": ConfiguredBattleEnv,
+        "BattleEnv": noah.Override(ConfiguredBattleEnv),
         "mod_priority": 9,
         "mod_name": "Setting",
         }

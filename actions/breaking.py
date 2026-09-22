@@ -16,3 +16,4 @@ ActionProperties = {  # Surrender/Break
     "human_only": True, "ai": [None], "weight": 0,
     "selecting_exec": break_selecting, "d_exec": [],
 }
+
