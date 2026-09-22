@@ -4,7 +4,7 @@
 
 import noah
 from actions.act_utils import summarize_crossfire_shots_msg, summarize_crossfire_defend_msg, summarize_crossfire_hurt_msg, summarize_crossfire_misses_msg, summarize_crossfire_reflect_msg, deliver_messages
-from actions.act_utils import wave_price, _calculate_aggression, get_direction, firecount
+from actions.act_utils import wave_price, get_direction, firecount
 from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_do_damage
 
 
@@ -132,7 +132,7 @@ def advanced_wave_ai(context):
 
 ActionProperties = {  # Energy Wave
     "price": wave_price, "priority": -1, "able": wave_able,
-    "human_only": False, "ai": [wave_ai, advanced_wave_ai], "weight": 1,
+    "human_only": False, "ai": [wave_ai], "weight": 1,
     "selecting_exec": wave_selecting,
     "dealing_exec": [
         crossfire_wave_eval,

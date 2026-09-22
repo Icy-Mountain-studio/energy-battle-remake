@@ -3,7 +3,7 @@
 """
 
 import noah
-from actions.act_utils import free_of_charge, _calculate_aggression, predictive_defend_ai
+from actions.act_utils import free_of_charge
 
 
 def defend_able(context):
@@ -56,7 +56,7 @@ def defend_dealing(PipeData, args):
 
 ActionProperties = {  # Defend
     "price": free_of_charge, "priority": 2, "able": defend_able,
-    "human_only": False, "ai": [defend_ai, predictive_defend_ai], "weight": 1,
+    "human_only": False, "ai": [defend_ai], "weight": 1,
     "selecting_exec": defend_selecting, "dealing_exec": [defend_dealing],
 }
 

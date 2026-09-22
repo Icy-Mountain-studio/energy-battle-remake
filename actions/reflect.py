@@ -3,7 +3,6 @@
 """
 
 import noah
-from actions.act_utils import predictive_defend_ai
 
 
 def reflect_ai(context):
@@ -48,7 +47,7 @@ def reflect_dealing(PipeData, args):
 
 ActionProperties = {  # Reflect
     "price": reflect_price, "priority": 2, "able": reflect_able,
-    "human_only": False, "ai": [reflect_ai, predictive_defend_ai], "weight": 1,
+    "human_only": False, "ai": [reflect_ai], "weight": 1,
     "selecting_exec": reflect_selecting, "dealing_exec": [reflect_dealing],
 }
 

@@ -3,7 +3,7 @@
 """
 
 import noah
-from actions.act_utils import able_forever, _calculate_aggression
+from actions.act_utils import able_forever
 
 # --- Action Logic Functions ---
 # These functions define the behavior of each action in the game.
@@ -54,7 +54,7 @@ def advanced_charge_ai(context):
 
 ActionProperties = {  # Charge
     "price": charge_price, "priority": 10, "able": able_forever,
-    "human_only": False, "ai": [charge_ai, advanced_charge_ai], "weight": 1,
+    "human_only": False, "ai": [charge_ai], "weight": 1,
     "selecting_exec": charge_selecting, "dealing_exec": [charge_dealing],
 }
 

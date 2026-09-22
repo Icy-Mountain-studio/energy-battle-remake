@@ -96,17 +96,31 @@ def import_module_from_path(file_path: str):
         if path_added:
             sys.path.remove(dir_path)
 
+def remove_none(obj):
+    if isinstance(obj, dict):
+        return {k: remove_none(v) for k, v in obj.items() if v is not None}
+    elif isinstance(obj, list):
+        return [remove_none(item) for item in obj]
+    return obj
 
-def deep_merge(low_dict, high_dict):
-    """high_dict will cover low_dict"""
-    result = low_dict.copy()
-    for key, value in high_dict.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            # Both dicts, keep merging
+def deep_merge(low: dict, high: dict):
+    """high will cover low"""
+    result = {}
+
+    for key, value in low.items():
+        if value is not None:
+            result[key] = remove_none(value)
+
+    for key, value in high.items():
+        if value is None:
+            result.pop(key, None)
+        elif key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_merge(result[key], value)
+        elif key in result and isinstance(result[key], list) and isinstance(value, list):
+            result[key] = result[key] + remove_none(value)
         else:
-            # Otherwise cover it directly
-            result[key] = value
+            result[key] = remove_none(value)
+            
     return result
 
 
@@ -126,6 +140,7 @@ C = {
     "MAGENTA": '\033[1;35m',
     # For general prompts and descriptions.
     "WHITE": '\033[1;37m',
+    "GRAY": '\033[38;5;248m',
 }
 
 
@@ -201,25 +216,23 @@ class IO():
 
             if orinal_result != "NONE":
                 # Result with indentation for logging/history.
-                indented_result = indent_spaces + orinal_result
+                # indented_result = indent_spaces + orinal_result
+                indented_result = orinal_result.replace("\n", "\n"+indent_spaces)
                 full_format_result = indented_result
-                colored_result = orinal_result
 
                 if color:
                     full_format_result = self.colors.get(
                         color, "") + indented_result + self.colors["RESET"]
-                    colored_result = self.colors.get(
-                        color, "") + orinal_result + self.colors["RESET"]
 
                 # Output to the specified channels.
                 if "s" in mode:
                     if indent_spaces:
                         print(indent_spaces, end="")
                     if self.typing_delay > 0:
-                        self._typewriter_print(colored_result, speed_stability)
+                        self._typewriter_print(full_format_result, speed_stability)
                         print(end=real_end)
                     else:
-                        print(colored_result, end=real_end)
+                        print(full_format_result, end=real_end)
 
                 if "h" in mode:
                     self.history.append(full_format_result)
@@ -228,9 +241,12 @@ class IO():
                     self.logs.append(f"{timestamp}\n{orinal_result}\n")
 
     def write_log(self):
-        with gzip.open(self.logpath, 'ab') as f:
-            # need to encode the string
-            f.write(("\n".join(self.logs) + '\n').encode('utf-8'))
+        try:
+            with gzip.open(self.logpath, 'ab') as f:
+                # need to encode the string
+                f.write(("\n".join(self.logs) + '\n').encode('utf-8'))
+        except PermissionError:
+            pass
 
         self.logs.clear()
 
@@ -481,27 +497,27 @@ class Player():
 
         return result
 
-    def hurted(self, decreasion: int | float, origin: int, act_key: str, core: Core):
+    def hurted(self, decrease: int | float, origin: int, act_key: str, core: Core):
         """
         The standard method for a player to take damage and log the event.
 
         Args:
-            decreasion (int): The amount of HP to reduce.
+            decrease (int): The amount of HP to reduce.
             origin (int): The ID of the player who caused the damage.
             act_key (str): The key of the action that caused the damage.
             core (Core): The main game core instance.
         """
-        if decreasion >= self.HP:
+        if decrease >= self.HP:
             # Prevents HP from going negative and logs exact lethal damage.
-            decreasion = self.HP
+            decrease = self.HP
             self.HP = 0
         else:
-            self.HP -= decreasion
+            self.HP -= decrease
 
-        if decreasion != 0:
-            core.PlDict[origin].outd += decreasion
+        if decrease != 0:
+            core.PlDict[origin].outd += decrease
             self.HPlog.append(
-                [decreasion, origin, core.ui.get(f'/act/{act_key}/name')])
+                [decrease, origin, core.ui.get(f'/act/{act_key}/name')])
 
 
     def evaluate_ability_and_weights(self, core: Core) -> tuple[list]:
@@ -620,8 +636,13 @@ def PipeWorkFlow(PipeData: dict, steps: list, args: tuple | list):
     OutData = PipeData
     for step_func in steps:
         OutData = step_func(OutData, args)
-        if OutData and "BREAK_PIPE" in OutData:
+        if OutData:
+            if "BREAK_CURRENT_PIPE" in OutData:
+                del OutData["BREAK_CURRENT_PIPE"]
                 return OutData
+            elif "BREAK_ALL_PIPES" in OutData:
+                return OutData
+
     return OutData
 
 
@@ -711,11 +732,12 @@ class Core():
             self.Mods = sorted(NewMods.values(), key=lambda d: d.get("mod_priority", 0))
 
         for mod in self.Mods:
-            mod["mod_reload"]()
-        
+            if "mod_reload" in mod.keys():
+                mod["mod_reload"]()
+
         try:
             # Merging Mods by their priorities
-            self.MergedMod: list = reduce(deep_merge, self.Mods)
+            self.MergedMod: list = reduce(deep_merge, self.Mods, {})
         except AttributeError:
             return -1
 
@@ -742,8 +764,10 @@ class Core():
         # A table that contain the names and PipeWorkFlows of kernel commands
         self.CmdTable: dict = self.MergedMod.get("CmdTable", default_cmd_table)
 
+
     def RunMainLoop(self):
-        self.Exec("-MainLoopWorkFLow", "GameMainLoop", {"core": self, "stages": []})
+        return self.Exec("-MainLoop", "GameMainLoop", {"core": self, "stages": []})
+
 
     def update_status(self):
         """
@@ -1033,7 +1057,7 @@ default_cmd_table = {
     "-evaluate_ability_and_weights_context": [
     ],
 
-    "-MainLoopWorkFLow": [
+    "-MainLoop": [
     ],
 }
 

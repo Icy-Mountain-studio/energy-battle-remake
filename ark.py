@@ -124,15 +124,22 @@ ArkUI.out("./welcome", color="YELLOW")
 
 def Setting():
     """A function where player can modify the BattleEnv"""
-    ConfiguredBattleEnv = copy.deepcopy(noah.reduce(noah.deep_merge, sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0)))["BattleEnv"])
+    ConfiguredBattleEnv = copy.deepcopy(
+        noah.reduce(noah.deep_merge,
+         sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0)))["BattleEnv"]
+         )
 
-    ArkUI.typing_delay = 0.001
+    noah.clear_screen()
+
+    org_delay = ArkUI.typing_delay
+    ArkUI.typing_delay = 0.005
     ArkUI.workdir = "/ark/setting/"
-    ArkUI.out("./title")
-    ArkUI.out("./intro")
 
     while True:
-
+        noah.clear_screen()
+        ArkUI.out("./title")
+        ArkUI.out("./intro")
+        
         ArkUI.workdir = "/ark/setting/"
         ArkUI.out("./current")
 
@@ -154,8 +161,8 @@ def Setting():
         ArkUI.out("/share/endl")
 
         if choice == "":
-            ArkUI.out("./exit")
-            ArkUI.out("/share/endl")
+            ArkUI.inp("./exit")
+            noah.clear_screen()
             break
 
         if choice in ConfiguredBattleEnv["setting_options"]:
@@ -182,14 +189,13 @@ def Setting():
             ArkUI.out("./error-invalid-choice")
             ArkUI.out("/share/endl")
 
-    ModsToLoad["Settings"] = {
+    ModsToLoad["Setting"] = {
         "BattleEnv": ConfiguredBattleEnv,
-        "mod_priority": 1,
-        "mod_name": "Settings",
-        "mod_reload": lambda: None
+        "mod_priority": 9,
+        "mod_name": "Setting",
         }
-    
-    ArkUI.workdir = "/ark/"
+
+    ArkUI.typing_delay = org_delay
 
 
 DefaultMods = ["ark_mod.py"]
@@ -202,41 +208,129 @@ for mod in DefaultMods:
 
 def ModManager():
     ArkUI.workdir = "/ark/mod_manager/"
+
+    noah.clear_screen()
+    ArkUI.out("./title")
+
     while True:
-        try:
-            user_input = ArkUI.inp("./new_mod_path")
+        mod_list = sorted(ModsToLoad.values(), key=lambda d: d.get("mod_priority", 0), reverse=True)
+        ArkUI.indent = 0
+        if ModsToLoad:
+            org_delay = ArkUI.typing_delay
+            ArkUI.typing_delay = 0
+            ArkUI.out("./demo")
+            ArkUI.out(noah.table([(mod_list.index(mod)+1, mod["mod_name"], mod.get("mod_priority", 0)) for mod in mod_list], f"{C['CYAN']}$0{C['RESET']}.\t$1\t{C['GRAY']}[$2]{C['RESET']}", "\n"), directly=True)
+            ArkUI.typing_delay = org_delay
+        ArkUI.out([
+                "/share/endl",
+                "./operation-add",
+                "./operation-remove",
+                "./operation-adjust-priority",
+                "/share/endl",
+            ])
+        operation_code = ArkUI.inp(["./ask-for-operation", "/share/endl"])
+        ArkUI.indent += 1
+
+        if operation_code == "1":
+            try:
+                ArkUI.out("/share/endl")
+                user_input = ArkUI.inp("./new_mod_path")
+                ArkUI.out("/share/endl")
+                if user_input:
+                    new_mod = noah.import_module_from_path(user_input)
+                else:
+                    continue
+
+            except FileNotFoundError:
+                ArkUI.out(["./file_system_failure", "/share/endl"], color="RED")
+                continue
+            except Exception as e:
+                ArkUI.out(["./import_failure", "/share/endl"], color="RED")
+                continue
+
+            try:
+                new_mod.ModContents["chosen_lang_code"] = chosen_lang_code
+                ModsToLoad[new_mod.ModContents["mod_name"]] = new_mod.ModContents
+            except (AttributeError, KeyError):
+                ArkUI.out(["./metadata_incomplete", "/share/endl"], color="MAGENTA")
+                continue
+
+            ArkUI.out(["./add-succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
+
+        elif operation_code == "2":
+            mod_going_to_remove = ArkUI.inp("./ask-for-modcode-to-remove")
+            try:
+                if not mod_going_to_remove:
+                    continue
+                mod_going_to_remove = int(mod_going_to_remove) - 1
+                name = mod_list[mod_going_to_remove]["mod_name"]
+                ArkUI.out("./selected", imp=[name])
+                del ModsToLoad[mod_list[mod_going_to_remove]["mod_name"]]
+                ArkUI.out("./remove-succeed", imp=[name], color="GREEN")
+
+            except (KeyError, IndexError):
+                ArkUI.out("/share/not-found", color="RED")
+
+            except ValueError:
+                ArkUI.out("./error-int", color="RED")
+
+            finally:
+                ArkUI.out("/share/endl")
+
+        elif operation_code == "3":
+            mod_going_to_reprior = ArkUI.inp("./ask-for-modcode-to-reprior")
+            try:
+                if not mod_going_to_reprior:
+                    ArkUI.out("/share/endl")
+                    continue
+                mod_going_to_reprior = int(mod_going_to_reprior) - 1
+
+            except ValueError:
+                ArkUI.out(["./error-int", "/share/endl"], color="RED")
+                continue
+
+
+            try:
+                ArkUI.out("./selected", imp=[mod_list[mod_going_to_reprior]["mod_name"]])
+                new_priority = float(ArkUI.inp("./ask-new-priority-for-mod"))
+                if new_priority.is_integer():
+                    new_priority = int(new_priority)
+                mod_list[mod_going_to_reprior]["mod_priority"] = new_priority
+                ArkUI.out("./priority-modified-succeed", imp=[mod_list[mod_going_to_reprior]["mod_name"], new_priority], color="GREEN")
+                ArkUI.out("/share/endl")
+
+            except ValueError:
+                ArkUI.out("./float-or-int", color="RED")
+
+            except (KeyError, IndexError):
+                ArkUI.out("/share/not-found", color="RED")
+
+            finally:
+                ArkUI.out("/share/endl")
+
+        elif not operation_code:
             ArkUI.out("/share/endl")
-            if user_input:
-                new_mod = noah.import_module_from_path(user_input)
-            else:
-                break
+            break
 
-        except FileNotFoundError:
-            ArkUI.out(["./file_system_failure", "/share/endl"], color="RED")
-            continue
-        except Exception as e:
-            ArkUI.out(["./import_failure", "/share/endl"], color="RED")
-            continue
+        else:
+            ArkUI.out("/share/not-found", color="RED")
 
-        try:
-            new_mod.ModContents["chosen_lang_code"] = chosen_lang_code
-            new_mod.ModContents["mod_reload"]()
-            ModsToLoad[new_mod.ModContents["mod_name"]] = new_mod.ModContents
-        except (AttributeError, KeyError):
-            ArkUI.out(["./metadata_incomplete", "/share/endl"], color="MAGENTA")
-            continue
-
-        ArkUI.out(["./succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
-        break
+    ArkUI.indent = 0
+    ArkUI.inp("./exit", color="YELLOW")
+    noah.clear_screen()
 
 
 def Gaming():
     """This is the main game loop function."""
-    for Mod in ModsToLoad.values():
-        Mod["mod_reload"]()
+
+    noah.clear_screen()
+
+    if not ModsToLoad:
+        ArkUI.inp("No mods are added to the Noah Kernel, game contents not found.", directly=True, color="RED")
+        noah.clear_screen()
+        return
 
     core = noah.Core(ModsToLoad)
-
     core.ui.out(core.battle_env_snapshot(), mode="l", directly=True)
 
     core.mk_pldict()
@@ -246,7 +340,7 @@ def Gaming():
         core.RunMainLoop()
 
         if core.exit_game:
-            core.ui.out(["/ark/break", "/share/endl"])
+            core.ui.inp(["/ark/break", "/share/endl"])
             break
 
         teams = []
@@ -261,10 +355,10 @@ def Gaming():
             core.ui.typing_delay *= 7
             if teams and 0 not in teams:
                 if core.status["pop"]["all"] > 1:
-                    core.ui.out("/ark/game-over-by-team", imp=[list(core.PlDict.values())[0].team])
+                    core.ui.inp("/ark/game-over-by-team", imp=[list(core.PlDict.values())[0].team])
                     break
                 elif core.status["pop"]["all"] == 1:
-                    core.ui.out("/ark/game-over", imp=[list(core.PlDict.values())[0].id])
+                    core.ui.inp("/ark/game-over", imp=[list(core.PlDict.values())[0].id])
                     break
 
             elif teams and 0 in teams:
@@ -276,25 +370,27 @@ def Gaming():
                     else:
                         ai_num += 1
                 if ai_num == 0 and humans_num == 1:
-                    core.ui.out("/ark/game-over", imp=[list(core.PlDict.values())[0].id])
+                    core.ui.inp("/ark/game-over", imp=[list(core.PlDict.values())[0].id])
                     break
                 elif ai_num != 0:
-                    core.ui.out("/ark/game-over-by-team", imp=[0])
+                    core.ui.inp("/ark/game-over-by-team", imp=[0])
                     break
             else:
-                core.ui.out("/ark/game-over-nobody")
+                core.ui.inp("/ark/game-over-nobody")
                 break
             core.ui.typing_delay /= 7
 
         core.ui.out("/share/endl")
 
     core.ui.write_log()
+    noah.time.sleep(0.5)
+    noah.clear_screen()
 
 
 def _exit():
     """Function to exit the game gracefully."""
     ArkUI.typing_delay = 0.1
-    ArkUI.out("./exit")
+    ArkUI.inp("./exit")
     return True
 
 # Transition Table: Maps user input from the main menu to corresponding functions.
@@ -304,8 +400,9 @@ TransTable = {
         "2": [ArkUI.get('./opt/2'), Setting],
         "3": [ArkUI.get('./opt/3'), ModManager],
         "4": [ArkUI.get('./opt/4'), _exit],
-    }
+    },
 }
+
 
 if __name__ == "__main__":
 
@@ -335,6 +432,7 @@ if __name__ == "__main__":
             ArkUI.out("/share/not-found")
             ArkUI.out("/share/endl")
         ArkUI.workdir = "/ark/"
+        ArkUI.indent = 0
 
         if exit_game:
             break

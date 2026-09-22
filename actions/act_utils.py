@@ -103,7 +103,6 @@ def crossfire_reflect(PipeData, args):
     someone_reflected = False
     for playerID in PipeData["damage"].keys():
         if "reflect" in core.PlDict[playerID].status and "reflect" not in attacker.status:
-            PipeData["msg"].append(["./reflect", [act.ownerID, PipeData["damage"][playerID], playerID]])
 
             try:
                 PipeData["statistics"]["reflect"][PipeData["damage"][playerID]].append(playerID)
@@ -111,9 +110,9 @@ def crossfire_reflect(PipeData, args):
                 PipeData["statistics"]["reflect"][PipeData["damage"][playerID]] = [playerID]
 
             if PipeData["damage"][playerID] > 0:
+                PipeData["msg"].append(["./reflect", [act.ownerID, PipeData["damage"][playerID], playerID]])
                 PipeData["damage"][playerID] *= -1 # Negative damage means it's reflected back
-            else:
-                PipeData["damage"][playerID] *= 2
+
             PipeData["signatures"][act.ownerID] = "5"
             someone_reflected = True
 
@@ -128,14 +127,14 @@ def crossfire_defend(PipeData, args):
     someone_defend = False
     for playerID in PipeData["damage"].keys():
         if "defend" in core.PlDict[playerID].status:
-            PipeData["msg"].append(["./defend", [playerID, PipeData["damage"][playerID]]])
             if PipeData["damage"][playerID] > 0:
+                PipeData["msg"].append(["./defend", [playerID, PipeData["damage"][playerID]]])
                 try:
                     PipeData["statistics"]["defences"][PipeData["damage"][playerID]].append(playerID)
                 except KeyError:
                     PipeData["statistics"]["defences"][PipeData["damage"][playerID]] = [playerID]
                 PipeData["damage"][playerID] = 0 # Nullify damage
-            someone_defend = True
+                someone_defend = True
 
     if someone_defend:
         PipeData["msg"].append(["/share/endl", []])
@@ -172,7 +171,7 @@ def summarize_crossfire_shots_msg(PipeData, args):
     # 1. Count total shots
     statistic_amount = 0
     for player_lists in PipeData["statistics"]["shots"].values():
-        statistic_amount += len(player_lists)
+        statistic_amount += len(list(dict.fromkeys(player_lists)))
 
     # 2. If it exceeds the threshold, rebuild the message list
     if statistic_amount > threshold:
@@ -203,7 +202,7 @@ def summarize_crossfire_misses_msg(PipeData, args):
 
     statistic_amount = 0
     for player_lists in PipeData["statistics"]["misses"].values():
-        statistic_amount += len(player_lists)
+        statistic_amount += len(list(dict.fromkeys(player_lists)))
 
     if statistic_amount > threshold:
         new_msg = []
@@ -230,7 +229,7 @@ def summarize_crossfire_defend_msg(PipeData, args):
 
     statistic_amount = 0
     for player_lists in PipeData["statistics"]["defences"].values():
-        statistic_amount += len(player_lists)
+        statistic_amount += len(list(dict.fromkeys(player_lists)))
 
     if statistic_amount > threshold:
         new_msg = []
@@ -257,7 +256,7 @@ def summarize_crossfire_reflect_msg(PipeData, args):
 
     statistic_amount = 0
     for player_lists in PipeData["statistics"]["reflect"].values():
-        statistic_amount += len(player_lists)
+        statistic_amount += len(list(dict.fromkeys(player_lists)))
 
     if statistic_amount > threshold:
         new_msg = []
@@ -323,114 +322,14 @@ def deliver_messages(PipeData, args):
                 core.ui.out(msg[0], imp=msg[1], color=act.color, speed_stability=-1000)
         if len(PipeData["msg"]) >= 4:
             core.ui.out("./wonderful", color="MAGENTA")
+
+        if core.PlDict[act.ownerID].real:
+            core.ui.inp("[Enter]", directly=True, color="GRAY")
         core.ui.indent -= 1
 
     core.ui.typing_delay = 0
+        
     return None
-
-
-def _calculate_aggression(context: dict) -> float:
-    """
-    A self-contained helper function to calculate an AI's aggression level.
-    This acts as a "mood sensor" for the advanced AI.
-    Returns:
-        A multiplier where > 1.0 is aggressive, < 1.0 is defensive.
-    """
-    self = context["self"]
-    core = context["core"]
-
-    my_team_energy = 0
-    enemy_team_energy = 0
-    my_team_population = 0
-    enemy_team_population = 0
-
-    for pl in core.PlDict.values():
-        if pl.team == self.team:
-            my_team_energy += pl.energy
-            my_team_population += 1
-        else:
-            enemy_team_energy += pl.energy
-            enemy_team_population += 1
-
-    if enemy_team_energy == 0: enemy_team_energy = 1
-    if enemy_team_population == 0: enemy_team_population = 1
-
-    energy_ratio = my_team_energy / enemy_team_energy
-    population_ratio = my_team_population / enemy_team_population
-
-    base_multiplier = (energy_ratio * 0.7) + (population_ratio * 0.3)
-
-    aggression = max(0.5, min(2.0, base_multiplier))
-
-    return aggression
-
-
-
-def predictive_defend_ai(context, ignore_hp=False):
-    aggression = _calculate_aggression(context)
-
-    s = context["self"]
-    core = context["core"]
-    base_threat = (context.get("enmK", 0.5) *
-                   context.get("engK", 0.5)) * 150 + 10
-    specific_threat = 0
-    for i in range(s.place - 1, s.place + 2):
-        if i in core.status["pop"]:
-            for pl_id in core.status["pop"][i]["sum"]:
-                if core.PlDict[pl_id].team == s.team or pl_id == s.id:
-                    continue
-                enemy_pl = core.PlDict[pl_id]
-                if enemy_pl.energy >= wave_price(None):
-                    specific_threat += 300
-                if enemy_pl.energy >= 3:
-                    specific_threat += enemy_pl.energy * 20
-    incoming_threat_score = base_threat + specific_threat
-    if ignore_hp:
-        return incoming_threat_score
-    hp_multiplier = 2.5 / (s.HP + 0.5)
-    final_score = incoming_threat_score * hp_multiplier
-    return final_score / aggression
-
-
-def _get_best_shot_target(context):
-    """
-    A helper function to find the best target for a shot-like action.
-    It returns the target player object and its calculated priority score.
-    """
-    s = context["self"]
-    core = context["core"]
-    best_target = None
-    max_score = -1
-
-    # Find all potential targets within one level (shot's default range)
-    shotable_players_ids = []
-    for i in range(s.place - 1, s.place + 2):
-        if i in core.status["pop"]:
-            for pl_id in core.status["pop"][i]["sum"]:
-                # Cannot target teammates (unless they are human) or self
-                if core.PlDict[pl_id].team == s.team and not core.PlDict[pl_id].real:
-                    continue
-                if pl_id == s.id:
-                    continue
-                shotable_players_ids.append(pl_id)
-
-    if not shotable_players_ids:
-        return None, 0
-
-
-    for target_id in shotable_players_ids:
-        target_pl = core.PlDict[target_id]
-        hp_score = 60 / (target_pl.HP + 0.1)
-        energy_score = (target_pl.energy ** 1.5) * 25
-        human_bonus = 75 if target_pl.real else 0
-
-        score = hp_score + energy_score + human_bonus
-
-        if score > max_score:
-            max_score = score
-            best_target = target_pl
-
-    return best_target, max_score
 
 def free_of_charge(act):
     return 0

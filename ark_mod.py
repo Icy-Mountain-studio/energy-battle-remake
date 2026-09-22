@@ -1,3 +1,7 @@
+"""
+/Energy-Battle-Remake/ark_mod.py
+"""
+
 import noah
 from localize import Expression
 
@@ -37,7 +41,6 @@ InitBattleEnv = {
 }
 
 from actions import BaseActDict
-
 
 def build_snapshot_status(PipeData, args):
     """
@@ -182,7 +185,7 @@ def SelectAct_workflow(PipeData: dict, args):
     PipeData["core"].SelectAct()
     PipeData["stages"].append("SelectAct")
     if PipeData["core"].exit_game:
-        PipeData["BREAK_PIPE"] = True
+        PipeData["BREAK_ALL_PIPES"] = True
     return PipeData
 
 def DealAct_workflow(PipeData: dict, args):
@@ -213,7 +216,7 @@ CmdTable["-evaluate_ability_and_weights_context"] += [
     evaluate_ability_and_weights_engK,
 ]
 
-CmdTable["-MainLoopWorkFLow"] += [
+CmdTable["-MainLoop"] += [
     write_core_log,
     next_round,
     clean_round_workflow,
@@ -232,9 +235,10 @@ ModContents = {
     "BattleEnv": InitBattleEnv,
     "ActDict": BaseActDict,
     "CmdTable": CmdTable,
-    "mod_priority": 0,
     "mod_name": "Ark",
     "mod_reload": ReloadMod
     }
 
+# "mod_priority": 0,
+# If there is no the key 'mod_priority', it would be defaulted to 0
 

@@ -5,7 +5,7 @@
 import noah
 from actions.act_utils import crossfire_crash, crossfire_reflect, crossfire_defend, crossfire_do_damage
 from actions.act_utils import deliver_messages
-from actions.act_utils import _calculate_aggression, _get_best_shot_target, firecount, get_direction
+from actions.act_utils import firecount, get_direction
 
 
 def shot_selecting(pl, core, auto):
@@ -116,36 +116,19 @@ def shot_selecting(pl, core, auto):
 
     else:  # --- AI Logic ---
 
-        if s.ai_quality == 0:
+        # 1. Efficiently find a target from the pre-calculated status cache.
+        shotable = []
+        for i in range(s.place - 1, s.place + 2):
+            if i in core.status["pop"]:
+                shotable += core.status["pop"][i]["sum"]
 
-            # 1. Efficiently find a target from the pre-calculated status cache.
-            shotable = []
-            for i in range(s.place - 1, s.place + 2):
-                if i in core.status["pop"]:
-                    shotable += core.status["pop"][i]["sum"]
-
-            target = pl.id
+        target = pl.id
+        _tg = core.status["snap"][target]
+        # Ensure the AI doesn't target itself or a teammate.
+        while _tg[3] == pl.team and ((not pl.real) or target == pl.id):
+            target = noah.random.choice(shotable)
             _tg = core.status["snap"][target]
-            # Ensure the AI doesn't target itself or a teammate.
-            while _tg[3] == pl.team and ((not pl.real) or target == pl.id):
-                target = noah.random.choice(shotable)
-                _tg = core.status["snap"][target]
-                shotable.remove(target)
-        else:
-
-            # 1. Use our helper function to find the optimal target.
-            # This re-calculates the best target, ensuring the AI acts on its decision.
-            context = {"self": s, "core": core}
-            context = core.Exec("-build_able_context",
-                                "shot_selecting", context)
-
-            best_target_pl, _ = _get_best_shot_target(context)
-
-            # If for some reason no target was found, abort.
-            if not best_target_pl:
-                # This can happen if there are no valid targets. Fallback to charging.
-                return (True, noah.Act(pl.id, "1"))
-            target = best_target_pl.id
+            shotable.remove(target)
 
         act = noah.Act(s.id, "2")
         act.lv = 3
@@ -201,22 +184,13 @@ def shot_ai(context):
     return context["self"].energy*50
 
 
-def advanced_shot_ai(context):
-    aggression = _calculate_aggression(context)
-    s = context["self"]
-    if s.energy < 1:
-        return 0
-    _, best_target_score = _get_best_shot_target(context)
-    return (best_target_score * s.energy) * aggression
-
-
 def shot_price(act):
     return act.lv
 
 
 ActionProperties = {  # Shoot
     "price": shot_price, "priority": -1, "able": shot_able,
-    "human_only": False, "ai": [shot_ai, advanced_shot_ai], "weight": 1,
+    "human_only": False, "ai": [shot_ai], "weight": 1,
     "selecting_exec": shot_selecting,
     "dealing_exec": [
         crossfire_evaluate,
