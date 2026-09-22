@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 /Energy-Battle-Remake/noah.py
 """
@@ -9,8 +11,6 @@ Originally spun off from the development of the game 'Energy Battle'.
 Project initiated: 2025.8.2
 Last updated: 2026.9.22
 """
-
-from __future__ import annotations
 
 import readline
 import gzip
