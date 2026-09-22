@@ -6,6 +6,9 @@ on:
       - '*'   # 任意 tag 都触发
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -106,5 +109,5 @@ jobs:
         with:
           files: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
         env:
-          GITHUB_TOKEN: ${{ secrets.JERRY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
