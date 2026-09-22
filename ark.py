@@ -31,6 +31,8 @@ from noah import C
 from localize import Expression
 import copy
 import ark_menus
+import ark_mod
+import sys_tools_mod
 
 # A simple, data-driven language selector function.
 # It's designed to be easily integrated into the Ark/Noah project structure.
@@ -99,8 +101,6 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
             print(f"\n{C['RED']}Invalid selection. Please try again.{C['RESET']}\n")
 
 
-
-
 # Terminal check
 try:
     from terminal_check import show_check_result
@@ -123,6 +123,13 @@ ArkUI.workdir = "/ark/"
 ArkUI.out("./welcome", color="YELLOW")
 
 
+DefaultMods = [ark_mod, sys_tools_mod]
+ModsToLoad = {}
+
+for mod_object in DefaultMods:
+    mod_object.ModContents["chosen_lang_code"] = chosen_lang_code
+    ModsToLoad[mod_object.ModContents["mod_name"]] = mod_object.ModContents
+
 def Setting():
     """A function where player can modify the BattleEnv"""
     ConfiguredBattleEnv = copy.deepcopy(
@@ -137,15 +144,6 @@ def Setting():
         "mod_priority": 9,
         "mod_name": "Setting",
         }
-
-
-DefaultMods = ["ark_mod.py", "sys_tools_mod.py"]
-ModsToLoad = {}
-
-for mod in DefaultMods:
-    mod_object = noah.import_module_from_path(mod)
-    mod_object.ModContents["chosen_lang_code"] = chosen_lang_code
-    ModsToLoad[mod_object.ModContents["mod_name"]] = mod_object.ModContents
 
 
 def ModManager():
