@@ -1,4 +1,4 @@
-name: Build release on Windows and Linux
+name: Build release on Windows and Linux with PyPy3
 
 on:
   push:
@@ -29,15 +29,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up CPython 3.12
+      # 1. 切换为配置 PyPy3 环境
+      - name: Set up PyPy3
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: 'pypy3.10'
 
+      # 2. 用 PyPy3 的 pip 安装 Nuitka 依赖
       - name: Upgrade pip and ensure Nuitka installed
         run: |
-          python -m pip install --upgrade pip
-          pip install --upgrade nuitka ordered-set zstandard
+          pypy3 -m pip install --upgrade pip
+          pypy3 -m pip install --upgrade nuitka ordered-set zstandard
 
       - name: Install dependencies (Linux)
         if: matrix.platform == 'linux'
@@ -50,10 +52,11 @@ jobs:
         run: |
           choco install upx -y
 
+      # 3. Linux 环境打包（移除了不支持的 python-flag，开启了 upx 插件）
       - name: Build with Nuitka (Linux)
         if: matrix.platform == 'linux'
         run: |
-          python -m nuitka \
+          pypy3 -m nuitka \
             --standalone \
             --onefile \
             --assume-yes-for-downloads \
@@ -67,16 +70,16 @@ jobs:
             --nofollow-import-to=setuptools \
             --nofollow-import-to=pip \
             --remove-output \
-            --python-flag=no_site \
-            --python-flag=-OO \
             --enable-plugin=anti-bloat \
+            --enable-plugin=upx \
             ark.py
 
+      # 4. Windows 环境打包（显式指定了 upx.exe 的绝对路径）
       - name: Build with Nuitka (Windows)
         if: matrix.platform == 'windows'
         shell: cmd
         run: |
-          python -m nuitka ^
+          pypy3 -m nuitka ^
             --standalone ^
             --onefile ^
             --assume-yes-for-downloads ^
@@ -90,9 +93,9 @@ jobs:
             --nofollow-import-to=setuptools ^
             --nofollow-import-to=pip ^
             --remove-output ^
-            --python-flag=no_site ^
-            --python-flag=-OO ^
             --enable-plugin=anti-bloat ^
+            --enable-plugin=upx ^
+            --upx-binary=C:\ProgramData\chocolatey\bin\upx.exe ^
             ark.py
 
       - name: Upload binary
@@ -107,3 +110,4 @@ jobs:
           files: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

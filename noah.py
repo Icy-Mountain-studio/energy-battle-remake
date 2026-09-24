@@ -966,8 +966,7 @@ class Core():
                 if player.real:
                     # Pause for human player's death message.
                     self.ui.typing_delay *= 5
-                    last_hit = player.HPlog[-1] if player.HPlog else [0,
-                                                                      "Unknown", "Fate"]
+                    last_hit = player.HPlog[-1] if player.HPlog else [0, "Unknown", "Fate"]
                     self.ui.inp('/core/human-dead', imp=[_pl] + last_hit)
                     self.ui.typing_delay /= 5
 
@@ -1068,8 +1067,7 @@ class Core():
                 event.happen(self)
             except Exception as e:
                 if not self.debug:
-                    self.RaiseError("Core.DealEvents", f"Event '{
-                                    event.type}' failed: {e}")
+                    self.RaiseError("Core.DealEvents", f"Event '{event.type}' failed: {e}")
                 else:
                     raise e
 
