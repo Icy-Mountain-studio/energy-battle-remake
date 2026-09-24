@@ -9,7 +9,7 @@ The Noah Kernel: A turn-based game engine.
 Originally spun off from the development of the game 'Energy Battle'.
 
 Project initiated: 2025.8.2
-Last updated: 2026.9.22
+Last updated: 2026.9.25
 """
 
 import gzip

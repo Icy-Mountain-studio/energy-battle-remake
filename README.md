@@ -1,4 +1,4 @@
-# Energy Battle - Remake (v1.3-0)
+# Energy Battle - Remake (v1.3-1)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -11,14 +11,14 @@
 <a name="english"></a>
 ## 🇬🇧 English
 
-Welcome to **Energy Battle - Remake (v1.3-0)**!  
+Welcome to **Energy Battle - Remake (v1.3-1)**!  
 A tactical, highly extensible, turn-based terminal strategy game powered by the **Noah Kernel**.
 
-In version 1.3-0, the project completed a massive architectural upgrade: **complete mod-driven decoupling**. Even the original base game logic has been extracted into a standalone mod (`ark_mod.py`), allowing developers to customize, extend, or completely replace game mechanics at runtime without modifying a single line of engine core code.
+In version 1.3-1, the project completed a massive architectural upgrade: **complete mod-driven decoupling**. Even the original base game logic has been extracted into a standalone mod (`ark_mod.py`), allowing developers to customize, extend, or completely replace game mechanics at runtime without modifying a single line of engine core code.
 
 ---
 
-### 🌟 Key Highlights in v1.3-0
+### 🌟 Key Highlights in v1.3-1
 
 *   🧩 **100% Mod-Driven Architecture**: The Noah Kernel (`noah.py`) has zero built-in game rules. Battle environment (`BattleEnv`), action dictionaries (`ActDict`), and lifecycle hooks are loaded dynamically from pluggable mods.
 *   🔄 **Priority Deep Merge & Hot Reloading**: Mods specify loading priorities. Higher-priority mods seamlessly override or extend lower-priority ones. Supports real-time hot-reloading (`ModsHotReload`) during gameplay.
@@ -145,14 +145,14 @@ python ark.py
 <a name="简体中文"></a>
 ## 🇨🇳 简体中文
 
-欢迎体验 **能量之战-重制版 (v1.3-0)**！  
+欢迎体验 **能量之战-重制版 (v1.3-1)**！  
 基于 **Noah 内核 (Noah Kernel)** 构建的高扩展性、轻量化终端回合制多人群战策略游戏。
 
-在 1.3-0 版本中，项目完成了一次全面的架构蜕变：**彻底的模组化驱动解耦**。原有的核心游戏规则已被重构为独立模组（`ark_mod.py`）。开发者与玩家无需修改内核引擎代码，即可在游戏运行时自由定制、拓展甚至完全重写战斗逻辑。
+在 1.3-1 版本中，项目完成了一次全面的架构蜕变：**彻底的模组化驱动解耦**。原有的核心游戏规则已被重构为独立模组（`ark_mod.py`）。开发者与玩家无需修改内核引擎代码，即可在游戏运行时自由定制、拓展甚至完全重写战斗逻辑。
 
 ---
 
-### 🌟 v1.3-0 核心更新与亮点
+### 🌟 v1.3-1 核心更新与亮点
 
 *   🧩 **100% 模组驱动内核**：Noah 内核（`noah.py`）不包含任何预设游戏业务规则。战场环境（`BattleEnv`）、行动字典（`ActDict`）以及生命周期钩子均由外置模组动态注入。
 *   🔄 **优先级深度合并与热重载**：支持基于 `mod_priority` 的字典深度合并（`deep_merge`）与覆盖标记（`Override`）。支持在战斗内或战斗外随时执行模组热重载（`ModsHotReload`）。
@@ -223,7 +223,7 @@ python ark.py
 
 ### 📦 编写你的第一个 Mod
 
-在 1.3-0 中，编写一个扩展 Mod 极为简单。只需创建一个 `.py` 文件并暴露 `ModContents`：
+在 1.3-1 中，编写一个扩展 Mod 极为简单。只需创建一个 `.py` 文件并暴露 `ModContents`：
 
 ```python
 # my_heal_mod.py

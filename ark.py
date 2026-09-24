@@ -10,7 +10,7 @@ We need a frontend as elegant as the Noah backend: ark.py
 I hereby name it the Ark Frontend!
 
 Together, they create:
-Energy Battle - Remake v1.3-0
+Energy Battle - Remake v1.3-1
 
 This is a turn-based, many-vs-many combat game with a command-line interface.
 
@@ -23,7 +23,7 @@ which I call the "Noah Kernel".
 As you can see, the project is still far from complete.
 
 Project initiated: 2025.8.2
-Last updated: 2026.9.22
+Last updated: 2026.9.25
 """
 
 import noah  # Import the Noah kernel, with all due ceremony.
