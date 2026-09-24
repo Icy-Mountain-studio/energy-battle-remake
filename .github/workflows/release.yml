@@ -1,9 +1,9 @@
-name: Compilation based on PyInstaller, Pypy3 and upx
+name: Build release on Windows and Linux
 
 on:
   push:
     tags:
-      - '*'   # 任意 tag 都触发
+      - '**'
   workflow_dispatch:
 
 permissions:
@@ -50,6 +50,7 @@ jobs:
         run: |
           choco install upx -y
 
+
       - name: Build with PyInstaller (Linux)
         if: matrix.platform == 'linux'
         run: |
@@ -85,4 +86,3 @@ jobs:
           files: dist/energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
