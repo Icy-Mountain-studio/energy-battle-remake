@@ -81,6 +81,9 @@ def Menu_ModManager(ui, mods, lang_code, is_core=False, on_reload=None):
     Directly ported from ark.py ModManager().
     is_core: False if mods is a dict (from ark.py), True if mods is a list (from core.Mods).
     """
+
+    org_delay = ui.typing_delay
+    ui.typing_delay = 0
     ui.workdir = "/ark/mod_manager/"
     noah.clear_screen()
     ui.out("./title")
@@ -94,11 +97,8 @@ def Menu_ModManager(ui, mods, lang_code, is_core=False, on_reload=None):
             
         ui.indent = 0
         if mods:
-            org_delay = ui.typing_delay
-            ui.typing_delay = 0
             ui.out("./demo")
             ui.out(noah.table([(mod_list.index(mod)+1, mod["mod_name"], mod.get("mod_priority", 0)) for mod in mod_list], f"{C['CYAN']}$0{C['RESET']}.\t$1\t{C['GRAY']}[$2]{C['RESET']}", "\n"), directly=True)
-            ui.typing_delay = org_delay
         ui.out([
                 "/share/endl",
                 "./operation-add",
@@ -132,12 +132,13 @@ def Menu_ModManager(ui, mods, lang_code, is_core=False, on_reload=None):
                 else:
                     mods[new_mod.ModContents["mod_name"]] = new_mod.ModContents
                 if on_reload:
-                    on_reload()
+                    success = on_reload()
             except (AttributeError, KeyError):
                 ui.out(["./metadata_incomplete", "/share/endl"], color="MA")
                 continue
 
-            ui.out(["./add-succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
+            if not on_reload or success:
+                ui.out(["./add-succeed", "/share/endl"], imp=[new_mod.ModContents["mod_name"]], color="GREEN")
 
         elif operation_code == "2":
             mod_going_to_remove = ui.inp("./ask-for-modcode-to-remove")
@@ -153,13 +154,16 @@ def Menu_ModManager(ui, mods, lang_code, is_core=False, on_reload=None):
                 else:
                     del mods[name]
                 if on_reload:
-                    on_reload()
-                    
-                ui.out("./remove-succeed", imp=[name], color="GREEN")
+                    success = on_reload()
+                if not on_reload or success:
+                    ui.out("./remove-succeed", imp=[name], color="GREEN")
+
             except (KeyError, IndexError):
                 ui.out("/share/not-found", color="RED")
+
             except ValueError:
                 ui.out("./error-int", color="RED")
+
             finally:
                 ui.out("/share/endl")
 
@@ -200,3 +204,5 @@ def Menu_ModManager(ui, mods, lang_code, is_core=False, on_reload=None):
     ui.indent = 0
     ui.inp("./exit", color="YELLOW")
     noah.clear_screen()
+    ui.typing_delay = org_delay
+

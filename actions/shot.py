@@ -189,7 +189,7 @@ def shot_price(act):
 
 
 ActionProperties = {  # Shoot
-    "price": shot_price, "priority": -1, "able": shot_able,
+    "price": shot_price, "priority": -1.1, "able": shot_able,
     "human_only": False, "ai": [shot_ai], "weight": 1,
     "selecting_exec": shot_selecting,
     "dealing_exec": [

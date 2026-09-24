@@ -97,7 +97,7 @@ def blackhole_able(context):
 
 def blackhole_ai(context):
     """AI weight for 'Black Hole'."""
-    return context["self"].energy*10
+    return context["self"].energy*7
 
 
 ActionProperties = { # Black Hole

@@ -87,7 +87,8 @@ def crossfire_crash(PipeData, args):
                             elif PipeData["damage"][playerID] < 0:
                                 PipeData["signatures"][attacker.id] = current_act.key
 
-                        current_act.acted = True
+                        if not current_act.AOE:
+                            current_act.acted = True
 
     PipeData["msg"] += msg
     if msg:
@@ -328,8 +329,8 @@ def deliver_messages(PipeData, args):
         core.ui.indent -= 1
 
     core.ui.typing_delay = 0
-        
-    return None
+
+    return PipeData
 
 def free_of_charge(act):
     return 0

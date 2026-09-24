@@ -12,7 +12,6 @@ Project initiated: 2025.8.2
 Last updated: 2026.9.22
 """
 
-import readline
 import gzip
 import sys
 import time
@@ -153,10 +152,68 @@ C = {
 }
 
 
+def IO_explain(PipeData, args):
+    # Evaluate the string.
+    if PipeData["directly"]:
+        PipeData["result"] = explain(PipeData["key"], PipeData["imp"])
+    else:
+        # Resolve path and get the expression template.
+        PipeData["result"] = explain(PipeData["self"].get(PipeData["key"]), PipeData["imp"])
+    return PipeData
+
+
+def IO_MagicNONE(PipeData, args):
+    if PipeData["result"] == "NONE":
+        PipeData["BREAK_CURRENT_PIPE"] = True
+    return PipeData
+
+
+def IO_indent(PipeData, args):
+    if PipeData["indent"]:
+        if PipeData["indent"] is True:
+            indent_spaces = (PipeData["self"].indent * 4) * " "
+        elif isinstance(PipeData["indent"], int):
+            indent_spaces = (PipeData["indent"] * 4) * " "
+        else:
+            indent_spaces = ""
+        if indent_spaces != "":
+            PipeData["result"] = PipeData["result"].replace("\n", "\n"+indent_spaces)
+            PipeData["result"] = indent_spaces + PipeData["result"]
+    return PipeData
+
+
+def IO_color(PipeData, args):
+    PipeData["result"] = PipeData["self"].colors.get(PipeData["color"], "") + PipeData["result"] + PipeData["self"].colors["RESET"]
+    return PipeData
+
+
+def IO_StandardOutput(PipeData, args):
+    if "s" in PipeData["mode"]:
+        if PipeData["self"].typing_delay > 0:
+            PipeData["self"]._typewriter_print(PipeData["result"], PipeData["speed_stability"])
+            print(end=PipeData["real_end"])
+        else:
+            print(PipeData["result"], end=PipeData["real_end"])
+    return PipeData
+
+
+def IO_HistoricalOutput(PipeData, args):
+    if "h" in PipeData["mode"]:
+        PipeData["self"].history.append(PipeData["result"])
+    return PipeData
+
+
+def IO_LogOutput(PipeData, args):
+    if "l" in PipeData["mode"]:
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        PipeData["self"].logs.append(f"{timestamp}\n{PipeData["result"]}\n")
+    return PipeData
+
+
 class IO():
     """Defines an IO class for managing input, output, and logging."""
 
-    def __init__(self, exp:dict | None = None, logpath: str = "noah-log.gz", delay: int | float = 0.01):
+    def __init__(self, exp:dict | None = None, logpath: str = "noah-log.gz", delay: int | float = 0.01, workflow: list[function] | None = None):
         """
         Initializes the IO manager.
 
@@ -181,6 +238,18 @@ class IO():
         self.indent = 0
         # Delay for the typewriter effect. Set to 0 to disable.
         self.typing_delay = delay
+        if workflow is None:
+            self.workflow = [
+                IO_explain,
+                IO_MagicNONE,
+                IO_indent,
+                IO_color,
+                IO_StandardOutput,
+                IO_HistoricalOutput,
+                IO_LogOutput,
+            ]
+        else:
+            self.workflow = workflow
 
     def out(self, key, mode: str = "sh", real_end: str = "\n", directly: bool = False, imp: list | None = None, indent: bool = True, color=None, speed_stability: int | float = 3):
         """
@@ -204,50 +273,28 @@ class IO():
             imp = []
         if isinstance(key, list):
             # If `key` is a list, output each item in it recursively.
+            result = []
             for k in key:
-                self.out(k, mode, real_end, directly, imp,
-                         indent, color, speed_stability)
+                result.append(self.out(k, mode, real_end, directly, imp,
+                         indent, color, speed_stability))
+            return result
         else:
-            # Determine indentation prefix.
-            if indent is True:
-                indent_spaces = (self.indent * 4) * " "
-            elif isinstance(indent, int):
-                indent_spaces = (indent * 4) * " "
-            else:
-                indent_spaces = ""
+            PipeData = {
+                "key": key, 
+                "mode": mode,
+                "real_end": real_end,
+                "directly": directly, 
+                "imp": imp,
+                "indent": indent,
+                "color": color,
+                "speed_stability": speed_stability,
+                "self": self,
 
-            # Evaluate the final string to be printed.
-            if directly:
-                orinal_result = explain(key, imp)
-            else:
-                # Resolve path and get the expression template.
-                orinal_result = explain(self.get(key), imp)
+                "result": ""
+            }
 
-            if orinal_result != "NONE":
-                # Result with indentation for logging/history.
-                # indented_result = indent_spaces + orinal_result
-                indented_result = orinal_result.replace("\n", "\n"+indent_spaces)
-                full_format_result = indented_result
+            return PipeWorkFlow(PipeData, self.workflow, None)["result"]
 
-                if color:
-                    full_format_result = self.colors.get(
-                        color, "") + indented_result + self.colors["RESET"]
-
-                # Output to the specified channels.
-                if "s" in mode:
-                    if indent_spaces:
-                        print(indent_spaces, end="")
-                    if self.typing_delay > 0:
-                        self._typewriter_print(full_format_result, speed_stability)
-                        print(end=real_end)
-                    else:
-                        print(full_format_result, end=real_end)
-
-                if "h" in mode:
-                    self.history.append(full_format_result)
-                if "l" in mode:
-                    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-                    self.logs.append(f"{timestamp}\n{orinal_result}\n")
 
     def write_log(self):
         try:
@@ -272,13 +319,14 @@ class IO():
         """
         self.out(key, mode, real_end="", directly=directly,
                  imp=imp, indent=indent, color=color)
-        res = input()
+        result = input()
         if "h" in mode and self.history:
-            self.history[-1] += res
+            self.history[-1] += result
         if "l" in mode and self.logs:
-            self.logs[-1] += res
+            self.logs[-1] += result
 
-        return res
+        return result
+
 
     def dealpath(self, path):
         """
@@ -747,35 +795,41 @@ class Core():
             if "mod_reload" in mod.keys():
                 mod["mod_reload"]()
 
+        # Merging Mods by their priorities
+        self.MergedMod: list = reduce(deep_merge, self.Mods, {})
+
         try:
-            # Merging Mods by their priorities
-            self.MergedMod: list = reduce(deep_merge, self.Mods, {})
-        except AttributeError:
-            return -1
+            # A dictionary containing battle setup parameters (e.g., number of players, initial HP).
+            self.BattleEnv: dict = self.MergedMod["BattleEnv"]
 
-        # A dictionary containing battle setup parameters (e.g., number of players, initial HP).
-        self.BattleEnv: dict = self.MergedMod["BattleEnv"]
+            # The dictionary defining all possible actions in the game.
+            # Format: { "action_key": { ... action properties ... }, ... }
+            #
+            # Action properties include:
+            #   "name": (str) The display name of the action.
+            #   "price": (func) A function that calculates the energy cost of the action.
+            #   "price_display": (str) A string representing the price for display purposes.
+            #   "priority": (int) The execution priority. Higher numbers are executed first.
+            #   "able": (func) A function returning a bool, checking if the action is usable.
+            #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
+            #   "ai": (func) A function that returns a numerical weight for AI decision-making.
+            #   "selecting_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
+            #   "dealing_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
+            self.ActDict: dict = self.MergedMod["ActDict"]
 
-        # The dictionary defining all possible actions in the game.
-        # Format: { "action_key": { ... action properties ... }, ... }
-        #
-        # Action properties include:
-        #   "name": (str) The display name of the action.
-        #   "price": (func) A function that calculates the energy cost of the action.
-        #   "price_display": (str) A string representing the price for display purposes.
-        #   "priority": (int) The execution priority. Higher numbers are executed first.
-        #   "able": (func) A function returning a bool, checking if the action is usable.
-        #   "human_only": (bool) If True, this action is only available to human players (e.g., "help").
-        #   "ai": (func) A function that returns a numerical weight for AI decision-making.
-        #   "selecting_exec": (func) The selection-phase execution function, called immediately after a player chooses the action.
-        #   "dealing_exec": (list) A list of deal-phase execution functions, added to the PipeWorkFlow.
-        self.ActDict: dict = self.MergedMod["ActDict"]
+            self.ui: IO = self.MergedMod["ui"]
 
-        self.ui: IO = self.MergedMod["ui"]
+            # A table that contain the names and PipeWorkFlows of kernel commands
+            self.CmdTable: dict = self.MergedMod.get("CmdTable", default_cmd_table)
 
-        # A table that contain the names and PipeWorkFlows of kernel commands
-        self.CmdTable: dict = self.MergedMod.get("CmdTable", default_cmd_table)
+        except KeyError as e:
+            if self.debug:
+                raise e
+            else:
+                self.RaiseError("ModsHotReload", "MergedMod after the HotReload could not provide enough battle config")
+                return False
 
+        return True
 
     def RunMainLoop(self):
         return self.Exec("-MainLoop", "GameMainLoop", {"core": self, "stages": []})
@@ -997,8 +1051,7 @@ class Core():
                 return PipeWorkFlow(PipeData, self.CmdTable[cmd_name], self)
             except Exception as e:
                 if not self.debug:
-                    self.RaiseError(domain, f"Kernel command '{
-                                    cmd_name}' failed: {e}")
+                    self.RaiseError(domain, f"Kernel command '{cmd_name}' failed: {e}")
                     return {}
                 else:
                     raise e

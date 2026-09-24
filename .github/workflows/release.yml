@@ -1,4 +1,4 @@
-name: Build Optimized Binaries
+name: Compilation based on PyInstaller, Pypy3 and upx
 
 on:
   push:
@@ -29,71 +29,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up PyPy
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: 'pypy3.12'
 
-      - name: Upgrade pip and ensure Nuitka installed
+      - name: Upgrade pip and install PyInstaller
         run: |
           python -m pip install --upgrade pip
-          pip install --upgrade nuitka ordered-set zstandard
+          pip install pyinstaller ordered-set zstandard
 
       - name: Install dependencies (Linux)
         if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ccache patchelf upx
+          sudo apt-get install -y upx-ucl
 
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows'
         run: |
           choco install upx -y
 
-
-      - name: Build with Nuitka (Linux)
+      - name: Build with PyInstaller (Linux)
         if: matrix.platform == 'linux'
         run: |
-          python -m nuitka \
-            --standalone \
+          pyinstaller \
             --onefile \
-            --assume-yes-for-downloads \
-            --lto=yes \
-            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} \
-            --include-data-files=localize.py=localize.py \
-            --nofollow-import-to=tkinter \
-            --nofollow-import-to=unittest \
-            --nofollow-import-to=test \
-            --nofollow-import-to=distutils \
-            --nofollow-import-to=setuptools \
-            --nofollow-import-to=pip \
-            --remove-output \
-            --python-flag=no_site \
-            --python-flag=-OO \
-            --enable-plugin=anti-bloat \
+            --name energy-battle-${{ matrix.platform }}-${{ matrix.arch }} \
+            --add-data "localize.py:." \
+            --clean \
             ark.py
 
-      - name: Build with Nuitka (Windows)
+      - name: Build with PyInstaller (Windows)
         if: matrix.platform == 'windows'
         shell: cmd
         run: |
-          python -m nuitka ^
-            --standalone ^
+          pyinstaller ^
             --onefile ^
-            --assume-yes-for-downloads ^
-            --lto=yes ^
-            --output-filename=energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }} ^
-            --include-data-files=localize.py=localize.py ^
-            --nofollow-import-to=tkinter ^
-            --nofollow-import-to=unittest ^
-            --nofollow-import-to=test ^
-            --nofollow-import-to=distutils ^
-            --nofollow-import-to=setuptools ^
-            --nofollow-import-to=pip ^
-            --remove-output ^
-            --python-flag=no_site ^
-            --python-flag=-OO ^
-            --enable-plugin=anti-bloat ^
+            --name energy-battle-${{ matrix.platform }}-${{ matrix.arch }} ^
+            --add-data "localize.py;." ^
+            --clean ^
             ark.py
 
 
@@ -101,13 +76,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}
-          path: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          path: dist/energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
 
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
+          files: dist/energy-battle-${{ matrix.platform }}-${{ matrix.arch }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

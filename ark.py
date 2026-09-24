@@ -86,14 +86,14 @@ def select_language(expressions: dict, default_lang: str = "en_us") -> str:
 
         # Handle the default case: user presses Enter.
         if not choice:
-            print(f"Defaulting to {C['YELLOW']}{default_lang_name}{C['RESET']}.")
+            input(f"\nDefaulting to {C['YELLOW']}{default_lang_name}{C['RESET']}\n{C['GRAY']}[Enter]{C['RESET']}")
             return default_lang
 
         # Check if the input (e.g., '1' or 'zh_cn') is a valid option.
         if choice in options_map:
             selected_lang = options_map[choice]
             selected_name = expressions[selected_lang]["/ark/lang_name"]
-            print(f"Language set to: {C['YELLOW']}{selected_name}{C['RESET']}\n")
+            input(f"\nLanguage set to: {C['YELLOW']}{selected_name}{C['RESET']}\n{C['GRAY']}[Enter]{C['RESET']}")
             return selected_lang
 
         # Handle invalid input and re-prompt.
@@ -113,7 +113,6 @@ except ImportError:
 # ArkUI is the UI instance managed by the frontend, distinct from core.ui.
 # You can select a language here
 chosen_lang_code = select_language(Expression)
-noah.time.sleep(0.3)
 noah.clear_screen()
 
 chosen_lang = Expression[chosen_lang_code]
@@ -213,7 +212,6 @@ def Gaming():
         core.ui.out("/share/endl")
 
     core.ui.write_log()
-    noah.time.sleep(0.5)
     noah.clear_screen()
 
 
@@ -259,8 +257,7 @@ if __name__ == "__main__":
         elif res == "": # Default action is to start the game.
             exit_game = TransTable['mode']["1"][1]()
         else:
-            ArkUI.out("/share/not-found")
-            ArkUI.out("/share/endl")
+            ArkUI.out(["/share/not-found", "/share/endl"])
         ArkUI.workdir = "/ark/"
         ArkUI.indent = 0
 
