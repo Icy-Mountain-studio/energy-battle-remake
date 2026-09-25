@@ -1,144 +1,70 @@
-# Energy Battle - Remake (v1.3-1)
+# Energy Battle - Remake
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
-[![Status](https://img.shields.io/badge/Status-Active%20Development-brightgreen)](#)
+🌐 [简体中文 (Simplified Chinese)](README_zh.md)
 
-[English](README.md) | [简体中文](README_zh.md)
+**Energy Battle - Remake** is a highly customizable, turn-based, command-line strategy game written in Python. Powered by a custom-built game engine known as the **Noah Kernel**, this game supports complex multi-agent combat, allowing human players to fight alongside or against multiple AI opponents in a layered battlefield.
 
----
+## ✨ Features
 
-Welcome to **Energy Battle - Remake (v1.3-1)**!  
-A tactical, highly extensible, turn-based terminal strategy game powered by the **Noah Kernel**.
+- **Strategic Turn-Based Combat:** Manage your Health Points (HP), Energy, and Position (Levels/Floors) to outsmart your opponents.
+- **Rich Action System:** A rock-paper-scissors-like deep combat system including actions like *Charge*, *Shoot*, *Defend*, *Move*, *Reflect*, *Energy Wave*, and *Black Hole*.
+- **Noah Kernel & Ark Frontend:** A robust, modular architecture designed for extensibility.
+- **In-Game Modding & Settings:** Dynamically change game rules (HP, map size, AI teams) and hot-swap mods without restarting the game.
+- **Immersive CLI UI:** Typewriter text effects, ANSI-colored outputs, and auto-collapsing battle logs for a clean experience.
+- **Multi-language Support:** Native support for English, Simplified Chinese, Traditional Chinese, and Japanese.
 
-In version 1.3-1, the project completed a massive architectural upgrade: **complete mod-driven decoupling**. Even the original base game logic has been extracted into a standalone mod (`ark_mod.py`), allowing developers to customize, extend, or completely replace game mechanics at runtime without modifying a single line of engine core code.
+## 📋 Requirements
 
----
+- **Python 3.12 or higher** is strictly required.
+- A terminal/command prompt that supports ANSI colors (most modern terminals on Windows, macOS, and Linux do).
+- No third-party dependencies required! (Built entirely with Python standard libraries).
 
-### 🌟 Key Highlights in v1.3-1
+## 🚀 Installation & Usage
 
-*   🧩 **100% Mod-Driven Architecture**: The Noah Kernel (`noah.py`) has zero built-in game rules. Battle environment (`BattleEnv`), action dictionaries (`ActDict`), and lifecycle hooks are loaded dynamically from pluggable mods.
-*   🔄 **Priority Deep Merge & Hot Reloading**: Mods specify loading priorities. Higher-priority mods seamlessly override or extend lower-priority ones. Supports real-time hot-reloading (`ModsHotReload`) during gameplay.
-*   ⛓️ **Pipeline-Driven Lifecycle (`CmdTable`)**: Turn operations (logging, status snapshot, action selection, resolution, elimination checks) are decomposed into customizable, sequential execution pipelines (`PipeWorkFlow`).
-*   🛠️ **In-Battle Administration (`SysTool Mod`)**: Built-in wartime dev-tools allowing real-time status inspection, battlefield environment tweaking, live mod swapping, and batch player attribute editing (`HP`, `energy`, `place`, `team`, `ai_quality`) using flexible selectors (`all`, `t1`, `p0`, `1-5`).
-*   🌐 **Quad-Language Localization**: Full I18N support for English (`en_us`), Simplified Chinese (`zh_cn`), Traditional Chinese (`zh_tw`), and Japanese (`ja_jp`), complete with dynamic path resolution and ANSI typewriter effects.
-*   🛡️ **Zero External Dependencies**: Written in pure Python 3.12+. Runs in any terminal with ANSI color support.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Ryzdump/energy-battle-remake.git
+   ```
+2. Navigate into the project directory:
+   ```bash
+   cd energy-battle-remake
+   ```
+3. Run the game via the Ark frontend:
+   ```bash
+   python ark.py
+   ```
+   *(Upon running, you will be prompted to select your preferred language.)*
 
----
+## 🎮 How to Play
 
-### 🏛️ System Architecture
+By default, the game pits 1 human player against 9 AI players in a free-for-all battle. 
 
-The project maintains a clean two-tier decoupled architecture:
+Every turn, you must input the number corresponding to the action you want to take. If you just press `Enter` without typing anything, your AI assistant will make the best decision for you.
 
-```text
-┌────────────────────────────────────────────────────────┐
-│                   Ark Frontend (ark.py)                │
-│  - CLI Main Menu & Session Management                  │
-│  - Language Selector & Menu System (ark_menus.py)      │
-│  - Pre-flight Terminal Check (terminal_check.py)       │
-└───────────────────────────┬────────────────────────────┘
-                            │ Instantiates & Injects
-┌───────────────────────────▼────────────────────────────┐
-│                    Loaded Mods Pool                    │
-│  ├── ark_mod.py        (Base Energy Battle Ruleset)    │
-│  ├── sys_tools_mod.py  (In-Battle Admin Suite)         │
-│  └── Custom Mods...    (Community Addons)              │
-└───────────────────────────┬────────────────────────────┘
-                            │ Priority Deep-Merge (`deep_merge`)
-┌───────────────────────────▼────────────────────────────┐
-│                   Noah Kernel (noah.py)                │
-│  - Core Orchestrator & Action Registry (ActSign)       │
-│  - Stream Processing Pipelines (PipeWorkFlow)          │
-│  - Dynamic Importer (import_module_from_path)          │
-│  - Unified I/O Engine with gzip compression (IO)       │
-└────────────────────────────────────────────────────────┘
-```
+### Core Resources:
+- **HP:** You are eliminated when this reaches 0.
+- **Energy:** Used to pay for attacks and advanced skills. Gathered by *Charging*.
+- **Position:** The map consists of multiple vertical levels. You can only hit enemies if you aim in the correct direction (Up, Straight, Down) and if they are within range.
 
-#### The Life of a Turn (`-MainLoop`)
-Every turn executes through a modular pipeline registered in `CmdTable["-MainLoop"]`:
-1.  **`write_core_log`**: Flushes compressed session logs (`logs/noah_*.gz`).
-2.  **`next_round`**: Increments the turn counter.
-3.  **`clean_round_workflow`**: Resets turn-specific player flags (defend, reflect, temporary movement).
-4.  **`round_title_workflow`**: Renders formatted round headers.
-5.  **`SelectAct_workflow`**: Handles human input and AI weighted evaluations. Actions are registered into `ActSign` grouped by priority.
-6.  **`DealAct_workflow`**: Dispatches actions in descending priority order through action-specific `dealing_exec` pipelines (e.g., crossfire evaluation, annihilation, reflection, defense, and damage delivery).
-7.  **`rm_deaths_workflow`**: Processes casualties and casualty attribution.
-8.  **`update_status_workflow`**: Rebuilds cached battlefield metrics (population distribution, energy mapping, snapshot).
+### Basic Actions (Cost):
+1. **Charge (+1 Energy):** Draw energy from the void.
+2. **Shoot (1 Energy/shot):** Fire up to 3 energy projectiles at a target.
+3. **Defend (0 Energy):** Block incoming damage for the current turn.
+4. **Move (1 Energy):** Change your vertical position to dodge or chase.
+5. **Reflect (2 Energy):** Bounce incoming attacks back to the attacker.
+6. **Energy Wave (6 Energy):** A devastating Area-of-Effect (AoE) attack.
+7. **Black Hole (5 Energy):** Completely swallow and disable a target's action for the turn.
 
----
+*(You can view detailed rules in-game by selecting the "View Game Rules" action).*
 
-### 🎮 Default Actions in Energy Battle
+## 🛠️ Mod Development
 
- Key | Name | Cost | Priority | Description |
- :---: | :--- | :---: | :---: | :--- |
- `1` | **Charge** | +1 Energy | 10 | Draws 1 energy from the void. Always available. |
- `2` | **Shoot** | 1~3 Energy | -1 | Launches directional projectiles (up, level, down). Colliding shots annihilate each other. |
- `3` | **Defend** | 0 | 2 | Shields against attacks for the turn. Subject to consecutive usage limits. |
- `4` | **Move** | 1 Energy | 1 | Shifts vertical level within allowed speed and map boundaries. |
- `5` | **Reflect** | 2 Energy | 2 | Reverses incoming attack damage back to the attacker. |
- `6` | **Energy Wave** | 6 Energy | -1 | Devastating 5-damage directional AOE hitting all targets in line of sight. |
- `7` | **Black Hole** | 5 Energy | 9 | Consumes an opponent's chosen action, disabling and sealing it permanently. |
- `sys`| **System Tools** | 0 | 0 | *(SysTool Mod)* In-battle administration, batch editing, and live mod loading. |
- `rl` | **Show Rules** | 0 | 0 | Displays gameplay instructions and rules. |
- `bk` | **Surrender** | 0 | 0 | Forfeits the battle and returns to the menu. |
+Want to create your own actions, tweak the kernel, or write new admin tools? The Noah Kernel is built from the ground up for modding!
 
----
+Check out the official **[Mod Development Guide](MODDING.md)** to get started.
 
-### 📦 Writing a Custom Mod
+## 📜 License
 
-Creating a mod is straightforward. A mod is a standalone `.py` file exposing a `ModContents` dictionary:
+This project is open-sourced under the [MIT License](LICENSE).
 
-```python
-# my_teleport_mod.py
-import noah
-from actions.act_utils import able_forever
-
-def teleport_select(pl, core, auto):
-    pl.place = 0  # Blink to center level
-    return (True, noah.Act(pl.id, "tp"))
-
-ActionProperties = {
-    "price": lambda act: 3,
-    "priority": 8,
-    "able": lambda ctx: ctx["self"].energy >= 3,
-    "human_only": False,
-    "ai": [lambda ctx: 15],
-    "weight": 1,
-    "selecting_exec": teleport_select,
-    "dealing_exec": [],
-}
-
-ModContents = {
-    "mod_name": "TeleportMod",
-    "mod_priority": 10,  # Merged on top of lower priority mods
-    "ActDict": {
-        "tp": ActionProperties
-    }
-}
-```
-
-Load your mod dynamically before or during battle via the **Mod Manager**!
-
----
-
-### 🚀 Quick Start
-
-#### Requirements
-*   Python 3.12 or higher.
-*   Terminal supporting ANSI escape sequences (width ≥ 80 cols recommended).
-
-#### Run the Game
-```bash
-# Clone the repository
-git clone <repository-url>
-cd Energy-Battle-Remake
-
-# Launch immediately (no pip installs needed!)
-python ark.py
-```
-
----
-
-## 📄 License
-MIT License — See [LICENSE](LICENSE) for details.
 
