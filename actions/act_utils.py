@@ -32,9 +32,9 @@ def firecount(core, act, myself, PipeData):
                 # The shot missed.
                 PipeData["msg"].append([f"/act/{current_act.key}/shot-miss", [myself.id, target.id, current_act.lv]])
                 try:
-                    PipeData["statistics"]["misses"][current_act.lv].append(myself.id)
+                    PipeData["statistics"]["misses"][current_act.lv].append(target.id)
                 except KeyError:
-                    PipeData["statistics"]["misses"][current_act.lv] = [myself.id]
+                    PipeData["statistics"]["misses"][current_act.lv] = [target.id]
             else:
                 # The shot hit.
                 PipeData["msg"].append([f"/act/{current_act.key}/shot", [myself.id, target.id, current_act.lv]])

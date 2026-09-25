@@ -578,6 +578,7 @@ class Player():
                 pass
             self.HPlog.append(
                 [decrease, origin, core.ui.get(f'/act/{act_key}/name')])
+            self.HPlog = self.HPlog[-100:]
 
 
     def evaluate_ability_and_weights(self, core: Core) -> tuple[list]:
@@ -716,6 +717,9 @@ class Core():
 
     def __init__(self, Mods: dict):
 
+        # The debug mode of the Core
+        self.debug: bool = False
+
         # Make a mod-load to get original core settings and gaming data
         self.ModsHotReload(Mods)
 
@@ -754,8 +758,6 @@ class Core():
         # A table that contain the Event objects
         self.EventBus: list = []
 
-        self.debug: bool = False  # The debug mode of the Core
-
 
     def mk_pldict(self):
         """Creates the `self.PlDict` (player dictionary) based on `self.BattleEnv` settings."""
@@ -791,9 +793,11 @@ class Core():
             # Sort the mods by their priorities
             self.Mods = sorted(NewMods.values(), key=lambda d: d.get("mod_priority", 0))
 
-        for mod in self.Mods:
-            if "mod_reload" in mod.keys():
-                mod["mod_reload"]()
+            for mod in self.Mods:
+                if "mod_reload" in mod.keys():
+                    mod["mod_reload"]()
+        else:
+            self.Mods = {}
 
         # Merging Mods by their priorities
         self.MergedMod: list = reduce(deep_merge, self.Mods, {})
@@ -1037,9 +1041,12 @@ class Core():
         mode = "l"
         if not self.debug:
             mode += "s"
-        self.ui.inp(f"[{domain}] ERROR: {msg}",
-                    mode=mode, directly=True, color="RED")
-        self.ui.write_log()
+        try:
+            self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, directly=True, color="RED")
+            self.ui.write_log()
+        except AttributeError:
+            input(f"{C['RED']}[{domain}] ERROR: {msg}{C['RESET']}")
+
 
     def Exec(self, cmd_name: str, domain: str, PipeData=None):
         if cmd_name not in self.CmdTable:

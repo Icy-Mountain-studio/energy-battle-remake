@@ -1,0 +1,118 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/Data/Documents/Python work/Github/Energy-Battle-Remake
+plugins: cov-7.1.0
+collected 60 items
+
+tests/test_act_utils.py .................                                [ 28%]
+tests/test_actions.py .........                                          [ 43%]
+tests/test_interactive_actions.py .............                          [ 65%]
+tests/test_noah.py ................FFF..                                 [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_player_hurted ______________________________
+
+    def test_player_hurted():
+        core = Core(mock_mods_dict)
+        core.PlDict[2] = Player(2)
+        p1 = Player(1)
+        p1.HP = 10
+    
+        p1.hurted(3, origin=2, act_key="shot", core=core)
+        assert p1.HP == 7
+        assert core.PlDict[2].outd == 3
+    
+        p1.hurted(100, origin=2, act_key="wave", core=core)
+        assert p1.HP == 0
+>       assert 1 in core.PlDict[2].kills
+E       assert 1 in []
+E        +  where [] = <noah.Player object at 0x7f6a77639910>.kills
+
+tests/test_noah.py:174: AssertionError
+__________________________ test_player_select_complex __________________________
+
+    def test_player_select_complex():
+        mock_mod_local = {
+            "mod_name": "Mock", "BattleEnv": {"amount_of_actions_per_round": 2},
+            "ActDict": {
+                "valid_act": {
+                    "human_only": False, "able": lambda c: True, "priority": 1,
+                    "ai": [lambda c: 10], "weight": 1,
+                    "selecting_exec": lambda p, c, auto: (True, Act(p.id, "valid_act"))
+                },
+                "quit_act": {
+                    "human_only": False, "able": lambda c: True, "priority": 1,
+                    "ai": [lambda c: 1], "weight": 1,
+                    "selecting_exec": lambda p, c, auto: (True, None)
+                }
+            },
+            "ui": IO()
+        }
+        core = Core({"Mock": mock_mod_local})
+>       core.mk_pldict()
+
+tests/test_noah.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <noah.Core object at 0x7f6a776fbb10>
+
+    def mk_pldict(self):
+        """Creates the `self.PlDict` (player dictionary) based on `self.BattleEnv` settings."""
+>       if self.BattleEnv["team_size"] < 1:
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'team_size'
+
+noah.py:763: KeyError
+_____________________________ test_core_lifecycle ______________________________
+
+    def test_core_lifecycle():
+        mock_mod_local = {
+            "mod_name": "M", "BattleEnv": {"num": 1, "real": 0, "ai_quality": 0, "team_size": 1, "assist_team": 0, "initHP": 10, "amount_of_actions_per_round": 1},
+            "ActDict": {"act1": {"priority": 1, "human_only": False, "able": lambda c: True, "ai": [lambda c: 1], "weight": 1, "price": lambda a: 0, "selecting_exec": lambda p, c, a: (True, Act(1, "act1")), "dealing_exec": []}},
+            "ui": IO(),
+            "CmdTable": {"-MainLoop": [lambda p, c: p], "-update_status": [lambda p, c: p]}
+        }
+        core = Core({"M": mock_mod_local})
+        core.mk_pldict()
+    
+>       core.SelectAct()
+
+tests/test_noah.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+noah.py:888: in SelectAct
+    for res in results_iterator:
+               ^^^^^^^^^^^^^^^^
+noah.py:672: in SelectAct_WorkerFunc
+    able_actions, ai_weights = player.evaluate_ability_and_weights(core)
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+noah.py:600: in evaluate_ability_and_weights
+    context = core.Exec("-evaluate_ability_and_weights_context",
+noah.py:1052: in Exec
+    self.RaiseError(domain, f"Command not found: {cmd_name}")
+noah.py:1044: in RaiseError
+    self.ui.inp(f"[{domain}] ERROR: {msg}", mode=mode, directly=True, color="RED")
+noah.py:322: in inp
+    result = input()
+             ^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_pytest.capture.DontReadFromInput object at 0x7f6a78ae1e80>, size = -1
+
+    def read(self, size: int = -1) -> str:
+>       raise OSError(
+            "pytest: reading from stdin while output is captured!  Consider using `-s`."
+        )
+E       OSError: pytest: reading from stdin while output is captured!  Consider using `-s`.
+
+/home/jerry/common_env/lib/python3.14/site-packages/_pytest/capture.py:229: OSError
+----------------------------- Captured stdout call -----------------------------
+[38;5;210m[Player.evaluate_ability_and_weights] ERROR: Command not found: -evaluate_ability_and_weights_context[0m
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.14.7-final-0 ________________
+
+Coverage HTML written to dir htmlcov
+=========================== short test summary info ============================
+FAILED tests/test_noah.py::test_player_hurted - assert 1 in []
+FAILED tests/test_noah.py::test_player_select_complex - KeyError: 'team_size'
+FAILED tests/test_noah.py::test_core_lifecycle - OSError: pytest: reading fro...
+========================= 3 failed, 57 passed in 0.20s =========================
